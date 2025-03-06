@@ -6,6 +6,15 @@ import textstat
 from difflib import SequenceMatcher
 import time
 from collections import defaultdict
+import gzip #for gzip
+import zlib # for gzip
+import ssl # for ssl
+import socket #for ssl
+from datetime import datetime
+import textstat
+from collections import Counter #for keyword density
+from readability.readability import Document
+from lxml import html
 
 SEO_RULES = [
     {"name": "title_tag_exists", "description": "Check if <title> tag exists"},
@@ -325,6 +334,179 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
             "reason": "HTML validation requires external tools"
         }
 
+    # def check_responsive_design(soup, results):
+    #     # Check for viewport meta tag (already implemented)
+    #     # More advanced responsive checks require browser automation (e.g., Selenium)
+    #     pass # Placeholder
+
+    def check_canonical_tag_valid(soup, results):
+        canonical = soup.find("link", rel="canonical")
+        if canonical and canonical.get("href"):
+            canonical_url = urljoin(url, canonical["href"])
+            try:
+                requests.get(canonical_url, timeout=5)
+                results["results"]["technical"]["canonical_tag_valid"] = {"value": True, "status": "Good", "rating": 10, "reason": "Canonical URL is valid"}
+            except:
+                results["results"]["technical"]["canonical_tag_valid"] = {"value": False, "status": "Needs Improvement", "rating": 5, "reason": "Canonical URL is invalid"}
+        else:
+            results["results"]["technical"]["canonical_tag_valid"] = {"value": False, "status": "Needs Improvement", "rating": 5, "reason": "No canonical tag"}
+
+    def check_robots_meta_tag_exists(soup, results):
+        robots_meta = soup.find("meta", attrs={"name": "robots"})
+        results["results"]["technical"]["robots_meta_tag_exists"] = {"value": bool(robots_meta), "status": "Good" if robots_meta else "Needs Improvement", "rating": 8 if robots_meta else 5, "reason": "Robots meta tag present" if robots_meta else "Missing robots meta tag"}
+
+    def check_noindex_tag_check(soup, results):
+        robots_meta = soup.find("meta", attrs={"name": "robots"})
+        noindex = robots_meta and "noindex" in robots_meta.get("content", "").lower()
+        results["results"]["technical"]["noindex_tag_check"] = {"value": noindex, "status": "Needs Improvement" if noindex else "Good", "rating": 1 if noindex else 10, "reason": "Page is noindex" if noindex else "Page is indexable"}
+
+    def check_nofollow_tag_check(soup, results):
+        robots_meta = soup.find("meta", attrs={"name": "robots"})
+        nofollow = robots_meta and "nofollow" in robots_meta.get("content", "").lower()
+        results["results"]["technical"]["nofollow_tag_check"] = {"value": nofollow, "status": "Needs Improvement" if nofollow else "Good", "rating": 1 if nofollow else 10, "reason": "Page is nofollow" if nofollow else "Links are followed"}
+
+    
+
+    def check_image_dimensions_specified(soup, results):
+        images = soup.find_all("img")
+        missing_dims = any(not img.get("width") or not img.get("height") for img in images)
+        results["results"]["content"]["image_dimensions_specified"] = {"value": not missing_dims, "status": "Good" if not missing_dims else "Needs Improvement", "rating": 8 if not missing_dims else 5, "reason": "Image dimensions specified" if not missing_dims else "Missing image dimensions"}
+
+
+
+    def check_nofollow_on_external_links(soup, results):
+        external_links = [a for a in soup.find_all("a") if a.get("href", "").startswith("http")]
+        nofollow_links = [link for link in external_links if link.get("rel") and "nofollow" in link.get("rel")]
+        results["results"]["links"]["nofollow_on_external_links"] = {"value": len(nofollow_links), "status": "Good", "rating": 8, "reason": f"{len(nofollow_links)} external links have nofollow"}
+
+    def check_gzip_compression_enabled(response, results):
+        encoding = response.headers.get("Content-Encoding", "")
+        results["results"]["performance"]["gzip_compression_enabled"] = {"value": "gzip" in encoding or "br" in encoding, "status": "Good" if "gzip" in encoding or "br" in encoding else "Needs Improvement", "rating": 9 if "gzip" in encoding or "br" in encoding else 5, "reason": "GZIP/Brotli compression enabled" if "gzip" in encoding or "br" in encoding else "GZIP/Brotli compression disabled"}
+
+    def check_browser_caching_enabled(response, results):
+        cache_control = response.headers.get("Cache-Control", "")
+        expires = response.headers.get("Expires", "")
+        results["results"]["performance"]["browser_caching_enabled"] = {"value": bool(cache_control or expires), "status": "Good" if cache_control or expires else "Needs Improvement", "rating": 8 if cache_control or expires else 5, "reason": "Browser caching enabled" if cache_control or expires else "Browser caching disabled"}
+
+   
+
+    def check_xml_sitemap_exists(url, results):
+        sitemap_url = urljoin(url, "sitemap.xml")
+        try:
+            requests.get(sitemap_url, timeout=5)
+            results["results"]["technical"]["xml_sitemap_exists"] = {"value": True, "status": "Good", "rating": 9, "reason": "XML sitemap found"}
+        except:
+            results["results"]["technical"]["xml_sitemap_exists"] = {"value": False, "status": "Needs Improvement", "rating": 5, "reason": "XML sitemap missing"}
+
+    def check_keyword_in_title(soup, results, target_keyword):
+        title_tag = soup.title
+        title_text = title_tag.string.lower() if title_tag and title_tag.string else ""
+        keyword_in_title = target_keyword and target_keyword.lower() in title_text
+        results["results"]["content"]["keyword_in_title"] = {"value": keyword_in_title, "status": "Good" if keyword_in_title else "Needs Improvement", "rating": 10 if keyword_in_title else 5, "reason": "Keyword in title" if keyword_in_title else "Keyword not in title"}
+
+    def check_keyword_in_h1(soup, results, target_keyword):
+        h1_tags = soup.find_all("h1")
+        h1_text = " ".join(tag.get_text().lower() for tag in h1_tags)
+        keyword_in_h1 = target_keyword and target_keyword.lower() in h1_text
+        results["results"]["content"]["keyword_in_h1"] = {"value": keyword_in_h1, "status": "Good" if keyword_in_h1 else "Needs Improvement", "rating": 10 if keyword_in_h1 else 5, "reason": "Keyword in H1" if keyword_in_h1 else "Keyword not in H1"}
+
+    def check_image_file_size_optimized(soup, results):
+        # Requires downloading images and checking file sizes.
+        # Can be slow and resource-intensive.
+        results["results"]["content"]["image_file_size_optimized"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires downloading and analyzing images"}
+
+    def check_broken_internal_links(soup, results):
+        # Requires checking each internal link for a 200 status code.
+        # Can be slow.
+        results["results"]["links"]["broken_internal_links"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires checking all internal links"}
+
+    def check_broken_external_links(soup, results):
+        # Requires checking each external link for a 200 status code.
+        # Can be very slow.
+        results["results"]["links"]["broken_external_links"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires checking all external links"}
+
+    def check_redirects_minimized(results):
+        # Requires tracking redirect chains.
+        # Complex to implement.
+        results["results"]["performance"]["redirects_minimized"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires tracking redirect chains"}
+
+    def check_keyword_density(soup, results, target_keyword):
+        if target_keyword:
+            text = soup.get_text().lower()
+            words = re.findall(r'\b\w+\b', text)
+            keyword_count = Counter(words)[target_keyword.lower()]
+            total_words = len(words)
+            density = (keyword_count / total_words) * 100 if total_words > 0 else 0
+            results["results"]["content"]["keyword_density"] = {"value": round(density, 2), "status": "Good" if 1 <= density <= 3 else "Needs Improvement", "rating": 9 if 1 <= density <= 3 else 5, "reason": f"Keyword density: {density}%"}
+        else:
+            results["results"]["content"]["keyword_density"] = {"value": "No target keyword", "status": "Info", "rating": 0, "reason": "No target keyword provided"}
+
+    def check_content_freshness(soup, results):
+        # Requires checking for last modified date in headers or sitemap.
+        results["results"]["content"]["content_freshness"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires header or sitemap analysis"}
+
+    def check_core_web_vitals_lcp(results):
+        # Requires browser automation or PageSpeed Insights API.
+        results["results"]["performance"]["core_web_vitals_lcp"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires browser automation or API"}
+
+    def check_core_web_vitals_fid(results):
+        # Requires browser automation or PageSpeed Insights API.
+        results["results"]["performance"]["core_web_vitals_fid"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires browser automation or API"}
+
+    def check_core_web_vitals_cls(results):
+        # Requires browser automation or PageSpeed Insights API.
+        results["results"]["performance"]["core_web_vitals_cls"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires browser automation or API"}
+
+    def check_https_redirect(url, results):
+        if url.startswith("http://"):
+            try:
+                https_url = url.replace("http://", "https://", 1)
+                redirect_response = requests.get(https_url, allow_redirects=False, timeout=5)
+                results["results"]["security"]["https_redirect"] = {"value": redirect_response.status_code in [301, 302], "status": "Good" if redirect_response.status_code in [301, 302] else "Needs Improvement", "rating": 10 if redirect_response.status_code in [301, 302] else 5, "reason": "HTTP redirects to HTTPS" if redirect_response.status_code in [301, 302] else "HTTP does not redirect to HTTPS"}
+            except:
+                results["results"]["security"]["https_redirect"] = {"value": False, "status": "Error", "rating": 1, "reason": "Failed to check HTTPS redirect"}
+        else:
+            results["results"]["security"]["https_redirect"] = {"value": "HTTPS already", "status": "Info", "rating": 0, "reason": "URL is already HTTPS"}
+
+    def check_structured_data_valid(soup, results):
+        # Requires external API or library for schema validation.
+        results["results"]["schema"]["structured_data_valid"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires schema validation API"}
+
+    def check_internal_linking_depth(soup, results):
+        # Complex to implement; requires crawling and graph analysis.
+        results["results"]["links"]["internal_linking_depth"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires crawling and graph analysis"}
+
+    def check_external_linking_quality(soup, results):
+        # Requires checking domain authority, spam scores, etc.
+        results["results"]["links"]["external_linking_quality"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires external link analysis tools"}
+
+    def check_duplicate_content(soup, results):
+        # Requires comparing content with other pages on the web.
+        results["results"]["content"]["duplicate_content"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires content comparison and external APIs"}
+
+    def check_page_depth(url, results):
+        # Requires crawling from the homepage and tracking link paths.
+        results["results"]["url"]["page_depth"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires crawling and path analysis"}
+
+    def check_content_readability(soup, results):
+        try:
+            text = str(soup)  # Convert soup to string
+            tree = html.fromstring(text)
+            doc = Document(text)  # Use Document instead of Readability
+            readability_score = len(doc.summary())  # Just an example metric
+            results["results"]["content"]["content_readability"] = {
+                "value": readability_score,
+                "status": "Good" if readability_score > 50 else "Needs Improvement",
+                "rating": 9 if readability_score > 50 else 5,
+                "reason": f"Readability Score: {readability_score}"
+            }
+        except Exception as e:
+            print("Error:", e)
+
+    def check_social_meta_tags(soup, results):
+        # Requires checking for Open Graph and Twitter meta tags.
+        results["results"]["meta_tags"]["social_meta_tags"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires checking Open Graph and Twitter meta tags"}
+
     # Execute all checks
     check_meta_tags(soup, results)
     check_headings(soup,results)
@@ -337,6 +519,35 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
     check_schema(soup,results)
     check_links(soup,results)
     check_validation(soup,results)
+    # check_responsive_design(soup, results)
+    check_canonical_tag_valid(soup, results)
+    check_robots_meta_tag_exists(soup, results)
+    check_noindex_tag_check(soup, results)
+    check_nofollow_tag_check(soup, results)
+    check_image_file_size_optimized(soup, results)
+    check_image_dimensions_specified(soup, results)
+    check_broken_internal_links(soup, results)
+    check_broken_external_links(soup, results)
+    check_nofollow_on_external_links(soup, results)
+    check_gzip_compression_enabled(response, results)
+    check_browser_caching_enabled(response, results)
+    check_redirects_minimized(results)
+    check_xml_sitemap_exists(url, results)
+    check_keyword_in_title(soup, results, target_keyword)
+    check_keyword_in_h1(soup, results, target_keyword)
+    check_keyword_density(soup, results, target_keyword)
+    check_content_freshness(soup, results)
+    check_core_web_vitals_lcp(results)
+    check_core_web_vitals_fid(results)
+    check_core_web_vitals_cls(results)
+    check_https_redirect(url, results)
+    check_structured_data_valid(soup, results)
+    check_internal_linking_depth(soup, results)
+    check_external_linking_quality(soup, results)
+    check_duplicate_content(soup, results)
+    check_page_depth(url, results)
+    check_content_readability(soup, results)
+    check_social_meta_tags(soup, results)
 
     # Calculate overall rating
     total = 0
