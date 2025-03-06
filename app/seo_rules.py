@@ -91,13 +91,19 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
     def check_meta_tags(soup, results):
         title_tag = soup.title
         title_text = title_tag.string.strip() if title_tag and title_tag.string else ""
+        # Define title_len BEFORE it's used:
         title_len = len(title_text)
+
+        # Handle None explicitly if needed:
+        title_value = title_tag.string if title_tag and title_tag.string else "Missing Title" if title_tag is None else None
+
         results["results"]["meta_tags"]["title_tag_exists"] = {
-            "value": str(title_tag) if title_tag else False,
+            "value": title_value,
             "status": "Good" if title_tag else "Poor",
             "rating": 10 if title_tag else 1,
             "reason": "Title tag present" if title_tag else "Missing title tag - critical for SEO"
         }
+
         results["results"]["meta_tags"]["title_tag_length"] = {
             "value": title_len,
             "status": "Good" if 50 <= title_len <= 60 else "Needs Improvement",
@@ -126,7 +132,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
     }
 
     # Headings Evaluation
-    def check_headings():
+    def check_headings(soup, results):
         h1_tags = soup.find_all("h1")
         h2_tags = soup.find_all("h2")
         h3_tags = soup.find_all("h3")
@@ -160,7 +166,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
 
     # Content Evaluation
-    def check_content():
+    def check_content(soup, results):
         # Alt Attributes
         images = soup.find_all("img")
         alt_exists = all(img.get("alt") for img in images)
@@ -191,7 +197,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
 
     # Technical SEO
-    def check_technical():
+    def check_technical(soup, results):
         # Canonical Tag
         canonical = soup.find("link", rel="canonical")
         results["results"]["technical"]["canonical_tag_exists"] = {
@@ -220,7 +226,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
             }
 
     # Performance
-    def check_performance():
+    def check_performance(soup, results):
         # Page Load Time
         try:
             load_time = response.elapsed.total_seconds()
@@ -239,7 +245,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
             }
 
     # Security
-    def check_security():
+    def check_security(soup, results):
         # SSL Certificate
         ssl_status = url.startswith("https")
         results["results"]["security"]["ssl_certificate_installed"] = {
@@ -250,7 +256,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
 
     # URL Structure
-    def check_url():
+    def check_url(soup, results):
         parsed = urlparse(url)
         path_len = len(parsed.path)
         results["results"]["url"]["url_length_optimized"] = {
@@ -269,7 +275,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
 
     # Mobile Optimization
-    def check_mobile():
+    def check_mobile(soup, results):
         viewport = soup.find("meta", attrs={"name": "viewport"})
         results["results"]["mobile"]["mobile_viewport"] = {
             "value": bool(viewport),
@@ -279,7 +285,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
 
     # Schema Markup
-    def check_schema():
+    def check_schema(soup, results):
         schema_tags = soup.find_all("script", type="application/ld+json")
         results["results"]["schema"]["schema_markup_exists"] = {
             "value": len(schema_tags) > 0,
@@ -289,7 +295,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
 
     # Link Analysis
-    def check_links():
+    def check_links(soup, results):
         internal_links = [a for a in soup.find_all("a") if not a.get("href", "").startswith("http")]
         external_links = [a for a in soup.find_all("a") if a.get("href", "").startswith("http")]
         
@@ -310,7 +316,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
 
     # Validation Checks
-    def check_validation():
+    def check_validation(soup, results):
         html_errors = "Not implemented - requires W3C API"
         results["results"]["validation"]["html_validation"] = {
             "value": html_errors,
@@ -320,17 +326,17 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
 
     # Execute all checks
-    # check_meta_tags()
-    check_headings()
-    check_content()
-    check_technical()
-    check_performance()
-    check_security()
-    check_mobile()
-    check_url()
-    check_schema()
-    check_links()
-    check_validation()
+    check_meta_tags(soup, results)
+    check_headings(soup,results)
+    check_content(soup,results)
+    check_technical(soup,results)
+    check_performance(soup,results)
+    check_security(soup,results)
+    check_mobile(soup,results)
+    check_url(soup,results)
+    check_schema(soup,results)
+    check_links(soup,results)
+    check_validation(soup,results)
 
     # Calculate overall rating
     total = 0
