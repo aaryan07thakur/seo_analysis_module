@@ -1,26 +1,18 @@
-# Base image
 FROM python:3.9-slim
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-    
-
-# Copy requirements file
+# Copy requirements and install dependencies
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+RUN apt-get update && apt-get install -y libxml2-dev libxslt-dev
 
-# Copy application code
+# Copy entire project (not just `app`)
 COPY . .
 
-# Expose the FastAPI server port
+# Expose the FastAPI default port
 EXPOSE 8000
 
-# Default command to run the FastAPI server
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# FastAPI command (will be overridden in docker-compose for Celery)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

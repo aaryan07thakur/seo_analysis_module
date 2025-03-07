@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from app.models import seo_analysis_collection
 from app.tasks import perform_seo_analysis
 import uuid
+from typing import Optional, Dict
 
 app = FastAPI()
 
@@ -12,7 +13,7 @@ class AnalysisRequest(BaseModel):
 class AnalysisResponse(BaseModel):
     id: str
     status: str
-    result: dict = None  # Default value is None
+    result: Optional[Dict] = None  # Default value is None
 
 @app.post("/start-analysis/", response_model=AnalysisResponse)
 def start_analysis(request: AnalysisRequest):

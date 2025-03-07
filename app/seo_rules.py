@@ -4,7 +4,6 @@ from urllib.parse import urljoin, urlparse
 import re
 import textstat
 from difflib import SequenceMatcher
-import time
 from collections import defaultdict
 import gzip #for gzip
 import zlib # for gzip
@@ -334,10 +333,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
             "reason": "HTML validation requires external tools"
         }
 
-    # def check_responsive_design(soup, results):
-    #     # Check for viewport meta tag (already implemented)
-    #     # More advanced responsive checks require browser automation (e.g., Selenium)
-    #     pass # Placeholder
+
 
     def check_canonical_tag_valid(soup, results):
         canonical = soup.find("link", rel="canonical")
@@ -507,6 +503,175 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         # Requires checking for Open Graph and Twitter meta tags.
         results["results"]["meta_tags"]["social_meta_tags"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires checking Open Graph and Twitter meta tags"}
 
+
+
+    def check_favicon_exists(soup, url, results):
+    # Find favicon link
+        favicon_link = soup.find("link", rel="icon") or soup.find("link", rel="shortcut icon")
+
+        if favicon_link and favicon_link.get("href"):
+            favicon_url = urljoin(url, favicon_link["href"])
+            try:
+                # Use requests.head to check if the favicon exists
+                response = requests.head(favicon_url, timeout=10)
+
+                if response.status_code == 200:
+                    results["results"]["content"]["favicon_exists"] = {
+                        "value": True,
+                        "status": "Good",
+                        "rating": 10,
+                        "reason": "Favicon link found and accessible"
+                    }
+                    return  # Exit function if favicon is found
+            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+                pass  # Ignore errors and continue checking the root favicon
+
+        # Check the favicon file in the root directory
+        favicon_ico_url = urljoin(url, "/favicon.ico")
+        try:
+            response = requests.head(favicon_ico_url, timeout=5)
+
+            if response.status_code == 200:
+                results["results"]["content"]["favicon_exists"] = {
+                    "value": True,
+                    "status": "Good",
+                    "rating": 10,
+                    "reason": "Favicon link found and accessible"
+                }
+                return  # Exit function if root favicon is found
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+            pass  # Ignore errors and proceed
+
+        # If favicon is not found anywhere
+        results["results"]["content"]["favicon_exists"] = {
+            "value": False,
+            "status": "Poor",
+            "rating": 5,
+            "reason": "Favicon not found"
+        }
+
+
+
+    # def check_text_to_html_ratio(soup, results):
+    #     """
+    #     Checks text-to-HTML ratio
+    #     """
+    #     text = soup.get_text(separator=' ', strip=True)
+    #     html_length = len(str(soup))
+    #     text_length = len(text)
+
+    #     if html_length == 0:
+    #         ratio = 0
+    #     else:
+    #         ratio = text_length / html_length
+
+    #     results["results"]["content"]["text_to_html_ratio"] = {
+    #         "value": round(ratio, 2),
+    #         "status": "Good" if ratio > 0.15 else "Needs Improvement",
+    #         "rating": 9 if ratio > 0.15 else 5,
+    #         "reason": f"Text-to-HTML ratio: {ratio:.2f}"
+    #     }
+
+    # def check_iframe_usage(soup, results):
+    #     """
+    #     Checks for excessive iframe usage.
+    #     """
+    #     iframes = soup.find_all("iframe")
+    #     iframe_count = len(iframes)
+
+    #     results["results"]["content"]["iframe_usage"] = {
+    #         "value": iframe_count,
+    #         "status": "Good" if iframe_count <= 3 else "Needs Improvement",
+    #         "rating": 9 if iframe_count <= 3 else 5,
+    #         "reason": f"Number of iframes: {iframe_count}"
+    #     }
+
+
+    # def ceck_flash_usage(soup, results):
+    #     # Checks for Flash usage
+    #     embeds=soup.find_all("embed", attrs={"type": "application/x-shockwave-flash"})
+    #     objects=soup.find_all("object", attrs={"type": "application/x-shockwave-flash"})
+    #     flash_count=len(embeds)+len(objects)
+    #     results["result"]["content"]["flash_usage"]={
+    #         "value":flash_count,
+    #         "status":"Good" if flash_count==0 else "poor",
+    #         "Rating": 10 if flash_count==0 else 1,
+    #         "Reason": f'flash element found: {flash_count}'
+    #     }
+
+
+    # def check_broken_resource_link(soup, url, results):
+        
+    #     # Checks for broken resource links such as images, CSS, and JS files.
+        
+    # # Find all the resource links (images, scripts, stylesheets)
+    #     resources = soup.find_all(["img", "link", "script"])
+
+    #     broken_links = []  # List to store broken resource links
+
+    #     for resource in resources:
+    #         # Check 'src' for images and scripts, 'href' for stylesheets
+    #         resource_url = None
+    #         if resource.name == "img" and resource.get("src"):
+    #             resource_url = resource["src"]
+    #         elif resource.name == "link" and resource.get("href"):
+    #             resource_url = resource["href"]
+    #         elif resource.name == "script" and resource.get("src"):
+    #             resource_url = resource["src"]
+
+    #         if resource_url:
+    #             # Make the resource URL absolute
+    #             resource_url = urljoin(url, resource_url)
+
+    #             try:
+    #                 # Send a request to check if the resource is accessible
+    #                 response = requests.head(resource_url, timeout=5)
+    #                 if response.status_code != 200:
+    #                     broken_links.append(resource_url)  # Add to broken links if not 200
+    #             except requests.exceptions.RequestException:
+    #                 broken_links.append(resource_url)  # Add to broken links if request fails
+
+    #     # Store results in the 'results' dictionary
+    #     results["results"]["content"]["broken_resource_links"] = {
+    #         "value": len(broken_links),
+    #         "status": "Good" if len(broken_links) == 0 else "Needs Improvement",
+    #         "rating": 10 if len(broken_links) == 0 else 4,
+    #         "reason": f"Found {len(broken_links)} broken resource links" if broken_links else "No broken resource links found"
+    #     }
+
+
+    # def check_content_has_lists(soup, results):
+    
+    #     # Checks if content uses lists (ul, ol).
+        
+    #     ul_lists = soup.find_all("ul")
+    #     ol_lists = soup.find_all("ol")
+    #     list_count = len(ul_lists) + len(ol_lists)
+
+    #     results["results"]["content"]["content_has_lists"] = {
+    #         "value": list_count > 0,
+    #         "status": "Good" if list_count > 0 else "Needs Improvement",
+    #         "rating": 9 if list_count > 0 else 5,
+    #         "reason": f"Lists found: {list_count}"
+    #     }
+
+
+
+    # def check_content_has_tables(soup, results):
+        
+    #     # Checks if content uses tables.
+        
+    #     tables = soup.find_all("table")
+    #     table_count = len(tables)
+
+    #     results["results"]["content"]["content_has_tables"] = {
+    #         "value": table_count > 0,
+    #         "status": "Good" if table_count > 0 else "Needs Improvement",
+    #         "rating": 9 if table_count > 0 else 5,
+    #         "reason": f"Tables found: {table_count}"
+    #     }
+    
+
     # Execute all checks
     check_meta_tags(soup, results)
     check_headings(soup,results)
@@ -548,6 +713,13 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
     check_page_depth(url, results)
     check_content_readability(soup, results)
     check_social_meta_tags(soup, results)
+    check_favicon_exists(soup, url, results)
+    # check_text_to_html_ratio(soup, results)
+    # check_iframe_usage(soup, results)
+    # ceck_flash_usage(soup, results)
+    # check_broken_resource_link(soup, url, results)
+    # check_content_has_lists(soup, results)
+    # check_content_has_tables(soup, results)
 
     # Calculate overall rating
     total = 0
