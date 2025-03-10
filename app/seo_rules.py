@@ -14,6 +14,10 @@ import textstat
 from collections import Counter #for keyword density
 from readability.readability import Document
 from lxml import html
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
+import aiohttp
+import asyncio
 
 SEO_RULES = [
     {"name": "title_tag_exists", "description": "Check if <title> tag exists"},
@@ -347,14 +351,27 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         else:
             results["results"]["technical"]["canonical_tag_valid"] = {"value": False, "status": "Needs Improvement", "rating": 5, "reason": "No canonical tag"}
 
+
+
+
     def check_robots_meta_tag_exists(soup, results):
         robots_meta = soup.find("meta", attrs={"name": "robots"})
-        results["results"]["technical"]["robots_meta_tag_exists"] = {"value": bool(robots_meta), "status": "Good" if robots_meta else "Needs Improvement", "rating": 8 if robots_meta else 5, "reason": "Robots meta tag present" if robots_meta else "Missing robots meta tag"}
+        robots_meta_value =  robots_meta["content"] if robots_meta else False
+        results["results"]["technical"]["robots_meta_tag_exists"] = {
+            "value": robots_meta_value,
+            "status": "Good" if robots_meta else "Needs Improvement",
+            "rating": 8 if robots_meta else 5,
+            "reason": "Robots meta tag present" if robots_meta else "Missing robots meta tag",
+        }
+
+
 
     def check_noindex_tag_check(soup, results):
         robots_meta = soup.find("meta", attrs={"name": "robots"})
         noindex = robots_meta and "noindex" in robots_meta.get("content", "").lower()
         results["results"]["technical"]["noindex_tag_check"] = {"value": noindex, "status": "Needs Improvement" if noindex else "Good", "rating": 1 if noindex else 10, "reason": "Page is noindex" if noindex else "Page is indexable"}
+
+
 
     def check_nofollow_tag_check(soup, results):
         robots_meta = soup.find("meta", attrs={"name": "robots"})
@@ -375,9 +392,13 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         nofollow_links = [link for link in external_links if link.get("rel") and "nofollow" in link.get("rel")]
         results["results"]["links"]["nofollow_on_external_links"] = {"value": len(nofollow_links), "status": "Good", "rating": 8, "reason": f"{len(nofollow_links)} external links have nofollow"}
 
+
+
     def check_gzip_compression_enabled(response, results):
         encoding = response.headers.get("Content-Encoding", "")
         results["results"]["performance"]["gzip_compression_enabled"] = {"value": "gzip" in encoding or "br" in encoding, "status": "Good" if "gzip" in encoding or "br" in encoding else "Needs Improvement", "rating": 9 if "gzip" in encoding or "br" in encoding else 5, "reason": "GZIP/Brotli compression enabled" if "gzip" in encoding or "br" in encoding else "GZIP/Brotli compression disabled"}
+
+
 
     def check_browser_caching_enabled(response, results):
         cache_control = response.headers.get("Cache-Control", "")
@@ -394,11 +415,15 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         except:
             results["results"]["technical"]["xml_sitemap_exists"] = {"value": False, "status": "Needs Improvement", "rating": 5, "reason": "XML sitemap missing"}
 
+
+
     def check_keyword_in_title(soup, results, target_keyword):
         title_tag = soup.title
         title_text = title_tag.string.lower() if title_tag and title_tag.string else ""
         keyword_in_title = target_keyword and target_keyword.lower() in title_text
         results["results"]["content"]["keyword_in_title"] = {"value": keyword_in_title, "status": "Good" if keyword_in_title else "Needs Improvement", "rating": 10 if keyword_in_title else 5, "reason": "Keyword in title" if keyword_in_title else "Keyword not in title"}
+
+
 
     def check_keyword_in_h1(soup, results, target_keyword):
         h1_tags = soup.find_all("h1")
@@ -406,52 +431,211 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         keyword_in_h1 = target_keyword and target_keyword.lower() in h1_text
         results["results"]["content"]["keyword_in_h1"] = {"value": keyword_in_h1, "status": "Good" if keyword_in_h1 else "Needs Improvement", "rating": 10 if keyword_in_h1 else 5, "reason": "Keyword in H1" if keyword_in_h1 else "Keyword not in H1"}
 
-    def check_image_file_size_optimized(soup, results):
-        # Requires downloading images and checking file sizes.
-        # Can be slow and resource-intensive.
-        results["results"]["content"]["image_file_size_optimized"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires downloading and analyzing images"}
+
+
+    def check_image_file_size_optimized(soup, results, url):
+        images = soup.find_all("img")
+        all_optimized = True  # Assume all images are optimized unless proven otherwise
+
+        for img in images:
+            img_url = urljoin(url, img.get("src"))  # Fix typo from `gate` to `get`
+            try:
+                response = requests.head(img_url, timeout=5)  # Fix inconsistent variable name
+                filesize = int(response.headers.get("Content-Length", 0)) / 1024  # Convert bytes to KB
+
+                if filesize > 150:
+                    results["results"]["content"]["image_file_size_optimized"] = {
+                        "value": "False",  # Fix typo "Flase" to "False"
+                        "status": "Needs Improvement",
+                        "rating": 5,
+                        "reason": f'Image {img_url} is too large ({filesize:.2f} KB)'
+                    }
+                    all_optimized = False  # Mark that at least one image is too large
+
+            except Exception as e:
+                results["results"]["content"]["image_file_size_optimized"] = {
+                    "value": "Error",
+                    "status": "Error",
+                    "rating": 1,  # Fix: Ensure rating is an integer
+                    "reason": f'Failed to check size of image {img_url}. Error: {str(e)}'
+                }
+                return  # Exit function if there's an error
+
+        if all_optimized:  # If no large images were found
+            results["results"]["content"]["image_file_size_optimized"] = {
+                "value": "True",
+                "status": "Good",
+                "rating": 9,
+                "reasons": "All images are optimized"
+            }
+ 
+
 
     def check_broken_internal_links(soup, results):
-        # Requires checking each internal link for a 200 status code.
-        # Can be slow.
-        results["results"]["links"]["broken_internal_links"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires checking all internal links"}
+        internal_links=[urljoin(url, a.get("href")) for a in soup.find_all("a", href=True) if a.get ("href").startswith(("/", "./"))]
+        for link in internal_links:
+            try:
+                response=requests.head(link, timeout=5)
+                if response.status_code>=400:
+                    results["results"]["links"]["broken_internal_links"]={
+                        "value":"False",
+                        "status":"Needs to improvement",
+                        "rating":1,
+                        "reasons":f"Broken links:{link} ({response.status_code})"
+                    }
+                    return  #return after first link broken
+                else:
+                    results["results"]["links"]["broken_internal_links"]={
+                        "value":True,
+                        "status":"Good",
+                        "rating":9,
+                        "reasons":f"No Broken internal Links found"
+                    }
+            except:
+                results ["results"]["links"]["broken_internal_links"]={
+                    "value":"Error",
+                    "status":"Error",
+                    "rating":1,
+                    "reasons":f"Failed to check the link:{link}"
+                }
+                return   #return after first error
+    
 
-    def check_broken_external_links(soup, results):
-        # Requires checking each external link for a 200 status code.
-        # Can be very slow.
-        results["results"]["links"]["broken_external_links"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires checking all external links"}
 
-    def check_redirects_minimized(results):
-        # Requires tracking redirect chains.
-        # Complex to implement.
-        results["results"]["performance"]["redirects_minimized"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires tracking redirect chains"}
+    def check_broken_external_links(soup, results, url):
+        external_links = [
+        a.get("href") for a in soup.find_all("a", href=True)
+        if a.get("href").startswith("http") and urlparse(a.get("href")).netloc != urlparse(url).netloc
+        ]
+
+        broken_links = []
+
+        def check_link(link):
+            """Inner function to check a single link"""
+            try:
+                response = requests.head(link, timeout=5)
+                if response.status_code >= 400:
+                    return f"{link} ({response.status_code})"
+            except:
+                return f"{link} (Error)"
+            return None
+
+    # Use ThreadPoolExecutor to check multiple links in parallel
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            results_list = executor.map(check_link, external_links)
+
+        # Collect broken links
+            broken_links = [link for link in results_list if link]
+
+    # Update results dictionary
+        if broken_links:
+            results["results"]["links"]["broken_external_links"] = {
+            "value": False,
+            "status": "Needs Improvement",
+            "rating": 1,
+            "reason": f"Broken external links found: {', '.join(broken_links)}"
+        }
+        else:
+            results["results"]["links"]["broken_external_links"] = {
+            "value": True,
+            "status": "Good",
+            "rating": 9,
+            "reason": "No broken external links found"
+        }
+
+
+
+    def check_redirects_minimized(url, results):
+        try:
+            response = requests.get(url, allow_redirects=True, timeout=5)
+            redirect_count = len(response.history)
+            results["results"]["performance"]["redirects_minimized"] = {
+                "value": redirect_count <= 2, 
+                "status": "Good" if redirect_count <= 2 else "Needs Improvement", 
+                "rating": 10 if redirect_count <= 2 else 5, 
+                "reason": f"{redirect_count} redirects"
+                }
+        except:
+            results["results"]["performance"]["redirects_minimized"] = {
+                "value": "Error", "status": "Error", "rating": 1, "reason": "Failed to check redirects"}
+
+
 
     def check_keyword_density(soup, results, target_keyword):
-        if target_keyword:
-            text = soup.get_text().lower()
-            words = re.findall(r'\b\w+\b', text)
-            keyword_count = Counter(words)[target_keyword.lower()]
-            total_words = len(words)
-            density = (keyword_count / total_words) * 100 if total_words > 0 else 0
-            results["results"]["content"]["keyword_density"] = {"value": round(density, 2), "status": "Good" if 1 <= density <= 3 else "Needs Improvement", "rating": 9 if 1 <= density <= 3 else 5, "reason": f"Keyword density: {density}%"}
+            if target_keyword:
+                text = soup.get_text().lower()
+                words = re.findall(r'\b\w+\b', text)
+                keyword_count = Counter(words)[target_keyword.lower()]
+                total_words = len(words)
+                density = (keyword_count / total_words) * 100 if total_words > 0 else 0
+                results["results"]["content"]["keyword_density"] = {"value": round(density, 2), "status": "Good" if 1 <= density <= 3 else "Needs Improvement", "rating": 9 if 1 <= density <= 3 else 5, "reason": f"Keyword density: {density}%"}
+            else:
+                results["results"]["content"]["keyword_density"] = {"value": "No target keyword", "status": "Info", "rating": 0, "reason": "No target keyword provided"}
+
+
+
+    def check_content_freshness(url,soup, results):
+        #check last modified date in header in http response
+        response=requests.head(url)
+        last_modified=response.headers.get("last_modified")
+        if last_modified:
+            last_modified_date=datetime.strptime(last_modified, "%a %b %d %y %H:%M:%s %z")
         else:
-            results["results"]["content"]["keyword_density"] = {"value": "No target keyword", "status": "Info", "rating": 0, "reason": "No target keyword provided"}
+            last_modified_date=None
 
-    def check_content_freshness(soup, results):
-        # Requires checking for last modified date in headers or sitemap.
-        results["results"]["content"]["content_freshness"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires header or sitemap analysis"}
+        #check if the page contains a published/updated date in meta_tag
+        meta_date=None
+        for  meta in soup.find_all("meta"):
+            if meta.get("name") in ["article:published_time", "article:modified_time", "date"]:
+                meta_date=meta.get("content")
+                break
 
-    def check_core_web_vitals_lcp(results):
-        # Requires browser automation or PageSpeed Insights API.
-        results["results"]["performance"]["core_web_vitals_lcp"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires browser automation or API"}
+        #convert date time object if  found
+        if meta_date:
+            try:
+                meta_date=datetime.strptime(meta_date, "%Y-%m-%dT%H:%M:%S")
+            except ValueError:
+                meta_date=None
 
-    def check_core_web_vitals_fid(results):
-        # Requires browser automation or PageSpeed Insights API.
-        results["results"]["performance"]["core_web_vitals_fid"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires browser automation or API"}
+        # Extract dates from visible content (if needed)
 
-    def check_core_web_vitals_cls(results):
-        # Requires browser automation or PageSpeed Insights API.
-        results["results"]["performance"]["core_web_vitals_cls"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires browser automation or API"}
+        body_text=soup.get_text()
+        content_dates=re.findall(r"\b\d{4}-\d{2}-\d{2}\b", body_text)
+        content_dates=content_dates[0] if content_dates else None
+
+        # decide freshness status
+        freshness_date=last_modified_date or meta_date or content_dates
+        if freshness_date:
+            days_old=(datetime.utcnow()-freshness_date).days
+            status= "Good" if days_old else "Needs to improvement"
+            rating=9 if days_old <=30 else 5
+            reason=f"Last Update {days_old} days ago"
+
+        else:
+            status="unknown"
+            rating=0
+            reason="Could not determine last update date"
+
+        #save result
+            results["results"]["content"]["content_freshness"]= {
+                "value":freshness_date.strftime("%Y-%m-%d") if freshness_date else "unknown",
+                "status": status,
+                "rating": rating,
+                "reason": reason
+            }
+
+        
+    # def check_core_web_vitals_lcp(results):
+    #     # Requires browser automation or PageSpeed Insights API.
+    #     results["results"]["performance"]["core_web_vitals_lcp"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires browser automation or API"}
+
+    # def check_core_web_vitals_fid(results):
+    #     # Requires browser automation or PageSpeed Insights API.
+    #     results["results"]["performance"]["core_web_vitals_fid"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires browser automation or API"}
+
+    # def check_core_web_vitals_cls(results):
+    #     # Requires browser automation or PageSpeed Insights API.
+    #     results["results"]["performance"]["core_web_vitals_cls"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires browser automation or API"}
 
     def check_https_redirect(url, results):
         if url.startswith("http://"):
@@ -464,25 +648,44 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         else:
             results["results"]["security"]["https_redirect"] = {"value": "HTTPS already", "status": "Info", "rating": 0, "reason": "URL is already HTTPS"}
 
-    def check_structured_data_valid(soup, results):
-        # Requires external API or library for schema validation.
-        results["results"]["schema"]["structured_data_valid"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires schema validation API"}
+    # def check_structured_data_valid(soup, results):                #external api needs 
+    #     # Requires external API or library for schema validation.
+    #     results["results"]["schema"]["structured_data_valid"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires schema validation API"}
 
     def check_internal_linking_depth(soup, results):
-        # Complex to implement; requires crawling and graph analysis.
-        results["results"]["links"]["internal_linking_depth"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires crawling and graph analysis"}
+        internal_links = [a['href'] for a in soup.find_all('a', href=True) if a['href'].startswith('/')]
+        link_count = len(internal_links)
 
-    def check_external_linking_quality(soup, results):
-        # Requires checking domain authority, spam scores, etc.
-        results["results"]["links"]["external_linking_quality"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires external link analysis tools"}
+        results["results"]["links"]["internal_linking_depth"] = {
+            "value": link_count,
+            "status": "Good" if link_count > 5 else "Needs Improvement",
+            "rating": 9 if link_count > 5 else 5,
+            "reason": f"Page contains {link_count} internal links."
+        }
 
-    def check_duplicate_content(soup, results):
-        # Requires comparing content with other pages on the web.
-        results["results"]["content"]["duplicate_content"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires content comparison and external APIs"}
+    # def check_external_linking_quality(soup, results, url):
+    #     external_link=[]
+    #     for a in  soup.find_all('a',href=True):
+    #         link=a["href"]
+    #         prased_link=urlparse(link)
+    #         #check the link is the external (not a same domain as base_url)
+    #         if prased_link.netloc and url not in prased_link.netloc:
+    #             external_link.append(link)
+    #     link_count=len(external_link)
+    #     # Requires checking domain authority, spam scores, etc.
+    #     results["results"]["links"]["external_linking_quality"] = {
+    #         "value": "link_count",
+    #           "status": "Good" if link_count>0 else "needs Improvement" ,
+    #           "rating": 9 if link_count>0 else 5, 
+    #           "reason": f"page contains {link_count} External links"}
 
-    def check_page_depth(url, results):
-        # Requires crawling from the homepage and tracking link paths.
-        results["results"]["url"]["page_depth"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires crawling and path analysis"}
+    # def check_duplicate_content(soup, results):
+    #     # Requires comparing content with other pages on the web.
+    #     results["results"]["content"]["duplicate_content"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires content comparison and external APIs"}
+
+    # def check_page_depth(url, results):
+    #     # Requires crawling from the homepage and tracking link paths.
+    #     results["results"]["url"]["page_depth"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires crawling and path analysis"}
 
     def check_content_readability(soup, results):
         try:
@@ -499,51 +702,60 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         except Exception as e:
             print("Error:", e)
 
-    def check_social_meta_tags(soup, results):
-        # Requires checking for Open Graph and Twitter meta tags.
-        results["results"]["meta_tags"]["social_meta_tags"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires checking Open Graph and Twitter meta tags"}
 
+
+
+    def check_social_meta_tags(soup, results):
+        social_meta_tags=sum(1 for tag in soup.find_all("meta")
+                            if tag.get("property", "").startswith("og:")
+                            or tag.get("name","").startswith("Twitter:"))
+        
+        has_social_tags=social_meta_tags>0
+        results["results"]["meta_tags"]["social_meta_tags"]={
+            "value":has_social_tags,
+            "status":"Good" if has_social_tags else "Needs to improvement",
+            "rating":8 if has_social_tags else 5,
+            "reasons":"Social meta tags present" if has_social_tags else "Missing social meta tags"
+        }
 
 
     def check_favicon_exists(soup, url, results):
-    # Find favicon link
-        favicon_link = soup.find("link", rel="icon") or soup.find("link", rel="shortcut icon")
+    # Check if favicon is declared in HTML
+        favicon_tag = soup.find("link", rel=lambda r: r and "icon" in r.lower())
+        favicon_url = urljoin(url, favicon_tag["href"]) if favicon_tag and "href" in favicon_tag.attrs else None
 
-        if favicon_link and favicon_link.get("href"):
-            favicon_url = urljoin(url, favicon_link["href"])
+        if favicon_url:
+            # Perform a quick HTTP HEAD request only if a favicon link is found
             try:
-                # Use requests.head to check if the favicon exists
-                response = requests.head(favicon_url, timeout=10)
-
+                response = requests.head(favicon_url, timeout=5)
                 if response.status_code == 200:
-                    results["results"]["content"]["favicon_exists"] = {
-                        "value": True,
+                    results["results"]["meta_tags"]["favicon_exists"] = {
+                        "value": favicon_url,
                         "status": "Good",
                         "rating": 10,
-                        "reason": "Favicon link found and accessible"
+                        "reason": f"Favicon found and accessible"
                     }
-                    return  # Exit function if favicon is found
-            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
-                pass  # Ignore errors and continue checking the root favicon
+                    return  # Stop checking further
+            except requests.exceptions.RequestException:
+                pass  # Ignore request errors
 
-        # Check the favicon file in the root directory
-        favicon_ico_url = urljoin(url, "/favicon.ico")
+        # Fallback: Check /favicon.ico in root directory
+        root_favicon_url = urljoin(url, "/favicon.ico")
         try:
-            response = requests.head(favicon_ico_url, timeout=5)
-
+            response = requests.head(root_favicon_url, timeout=5)
             if response.status_code == 200:
-                results["results"]["content"]["favicon_exists"] = {
+                results["results"]["meta_tags"]["favicon_exists"] = {
                     "value": True,
                     "status": "Good",
                     "rating": 10,
-                    "reason": "Favicon link found and accessible"
+                    "reason": "Root favicon found and accessible"
                 }
-                return  # Exit function if root favicon is found
-        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
-            pass  # Ignore errors and proceed
+                return
+        except requests.exceptions.RequestException:
+            pass
 
-        # If favicon is not found anywhere
-        results["results"]["content"]["favicon_exists"] = {
+        # If favicon is missing
+        results["results"]["meta_tags"]["favicon_exists"] = {
             "value": False,
             "status": "Poor",
             "rating": 5,
@@ -552,125 +764,161 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
 
 
 
-    # def check_text_to_html_ratio(soup, results):
-    #     """
-    #     Checks text-to-HTML ratio
-    #     """
-    #     text = soup.get_text(separator=' ', strip=True)
-    #     html_length = len(str(soup))
-    #     text_length = len(text)
+    def check_text_to_html_ratio(soup, results):
+        """
+        Checks text-to-HTML ratio
+        """
+        text = soup.get_text(separator=' ', strip=True)
+        html_length = len(str(soup))
+        text_length = len(text)
 
-    #     if html_length == 0:
-    #         ratio = 0
-    #     else:
-    #         ratio = text_length / html_length
+        if html_length == 0:
+            ratio = 0
+        else:
+            ratio = text_length / html_length
 
-    #     results["results"]["content"]["text_to_html_ratio"] = {
-    #         "value": round(ratio, 2),
-    #         "status": "Good" if ratio > 0.15 else "Needs Improvement",
-    #         "rating": 9 if ratio > 0.15 else 5,
-    #         "reason": f"Text-to-HTML ratio: {ratio:.2f}"
-    #     }
+        results["results"]["content"]["text_to_html_ratio"] = {
+            "value": round(ratio, 2),
+            "status": "Good" if ratio > 0.15 else "Needs Improvement",
+            "rating": 9 if ratio > 0.15 else 5,
+            "reason": f"Text-to-HTML ratio: {ratio:.2f}"
+        }
 
-    # def check_iframe_usage(soup, results):
-    #     """
-    #     Checks for excessive iframe usage.
-    #     """
-    #     iframes = soup.find_all("iframe")
-    #     iframe_count = len(iframes)
+    def check_iframe_usage(soup, results):
+        """
+        Checks for excessive iframe usage.
+        """
+        iframes = soup.find_all("iframe")
+        iframe_count = len(iframes)
 
-    #     results["results"]["content"]["iframe_usage"] = {
-    #         "value": iframe_count,
-    #         "status": "Good" if iframe_count <= 3 else "Needs Improvement",
-    #         "rating": 9 if iframe_count <= 3 else 5,
-    #         "reason": f"Number of iframes: {iframe_count}"
-    #     }
-
-
-    # def ceck_flash_usage(soup, results):
-    #     # Checks for Flash usage
-    #     embeds=soup.find_all("embed", attrs={"type": "application/x-shockwave-flash"})
-    #     objects=soup.find_all("object", attrs={"type": "application/x-shockwave-flash"})
-    #     flash_count=len(embeds)+len(objects)
-    #     results["result"]["content"]["flash_usage"]={
-    #         "value":flash_count,
-    #         "status":"Good" if flash_count==0 else "poor",
-    #         "Rating": 10 if flash_count==0 else 1,
-    #         "Reason": f'flash element found: {flash_count}'
-    #     }
+        results["results"]["content"]["iframe_usage"] = {
+            "value": iframe_count,
+            "status": "Good" if iframe_count <= 3 else "Needs Improvement",
+            "rating": 9 if iframe_count <= 3 else 5,
+            "reason": f"Number of iframes: {iframe_count}"
+        }
 
 
-    # def check_broken_resource_link(soup, url, results):
+    def check_flash_usage(soup, results):
+        flash_count = sum(1 for tag in soup.find_all(["embed", "object"]) 
+                        if tag.get("type") == "application/x-shockwave-flash")
+
+        results["results"]["content"]["flash_usage"] = {
+            "value": flash_count,
+            "status": "Poor" if flash_count > 0 else "Good",
+            "rating": 1 if flash_count > 0 else 10,
+            "reason": f"{flash_count} Flash elements found"
+        }
+
+
+
+    def check_broken_resource_link(soup, url, results):
         
-    #     # Checks for broken resource links such as images, CSS, and JS files.
-        
-    # # Find all the resource links (images, scripts, stylesheets)
-    #     resources = soup.find_all(["img", "link", "script"])
+        # Checks for broken resource links such as images, CSS, and JS files.
+    # Find all the resource links (images, scripts, stylesheets)
+        resources = soup.find_all(["img", "link", "script"])
 
-    #     broken_links = []  # List to store broken resource links
+        broken_links = []  # List to store broken resource links
 
-    #     for resource in resources:
-    #         # Check 'src' for images and scripts, 'href' for stylesheets
-    #         resource_url = None
-    #         if resource.name == "img" and resource.get("src"):
-    #             resource_url = resource["src"]
-    #         elif resource.name == "link" and resource.get("href"):
-    #             resource_url = resource["href"]
-    #         elif resource.name == "script" and resource.get("src"):
-    #             resource_url = resource["src"]
+        for resource in resources:
+            # Check 'src' for images and scripts, 'href' for stylesheets
+            resource_url = None
+            if resource.name == "img" and resource.get("src"):
+                resource_url = resource["src"]
+            elif resource.name == "link" and resource.get("href"):
+                resource_url = resource["href"]
+            elif resource.name == "script" and resource.get("src"):
+                resource_url = resource["src"]
 
-    #         if resource_url:
-    #             # Make the resource URL absolute
-    #             resource_url = urljoin(url, resource_url)
+            if resource_url:
+                # Make the resource URL absolute
+                resource_url = urljoin(url, resource_url)
 
-    #             try:
-    #                 # Send a request to check if the resource is accessible
-    #                 response = requests.head(resource_url, timeout=5)
-    #                 if response.status_code != 200:
-    #                     broken_links.append(resource_url)  # Add to broken links if not 200
-    #             except requests.exceptions.RequestException:
-    #                 broken_links.append(resource_url)  # Add to broken links if request fails
+                try:
+                    # Send a request to check if the resource is accessible
+                    response = requests.head(resource_url, timeout=5)
+                    if response.status_code != 200:
+                        broken_links.append(resource_url)  # Add to broken links if not 200
+                except requests.exceptions.RequestException:
+                    broken_links.append(resource_url)  # Add to broken links if request fails
 
-    #     # Store results in the 'results' dictionary
-    #     results["results"]["content"]["broken_resource_links"] = {
-    #         "value": len(broken_links),
-    #         "status": "Good" if len(broken_links) == 0 else "Needs Improvement",
-    #         "rating": 10 if len(broken_links) == 0 else 4,
-    #         "reason": f"Found {len(broken_links)} broken resource links" if broken_links else "No broken resource links found"
-    #     }
+        # Store results in the 'results' dictionary
+        results["results"]["content"]["broken_resource_links"] = {
+            "value": len(broken_links),
+            "status": "Good" if len(broken_links) == 0 else "Needs Improvement",
+            "rating": 10 if len(broken_links) == 0 else 4,
+            "reason": f"Found {len(broken_links)} broken resource links" if broken_links else "No broken resource links found"
+        }
 
 
-    # def check_content_has_lists(soup, results):
+    def check_content_has_lists(soup, results):
     
-    #     # Checks if content uses lists (ul, ol).
+        # Checks if content uses lists (ul, ol).
         
-    #     ul_lists = soup.find_all("ul")
-    #     ol_lists = soup.find_all("ol")
-    #     list_count = len(ul_lists) + len(ol_lists)
+        ul_lists = soup.find_all("ul")
+        ol_lists = soup.find_all("ol")
+        list_count = len(ul_lists) + len(ol_lists)
 
-    #     results["results"]["content"]["content_has_lists"] = {
-    #         "value": list_count > 0,
-    #         "status": "Good" if list_count > 0 else "Needs Improvement",
-    #         "rating": 9 if list_count > 0 else 5,
-    #         "reason": f"Lists found: {list_count}"
-    #     }
+        results["results"]["content"]["content_has_lists"] = {
+            "value": list_count > 0,
+            "status": "Good" if list_count > 0 else "Needs Improvement",
+            "rating": 9 if list_count > 0 else 5,
+            "reason": f"Lists found: {list_count}"
+        }
 
 
 
-    # def check_content_has_tables(soup, results):
+    def check_content_has_tables(soup, results):
         
-    #     # Checks if content uses tables.
+        # Checks if content uses tables.
         
-    #     tables = soup.find_all("table")
-    #     table_count = len(tables)
+        tables = soup.find_all("table")
+        table_count = len(tables)
 
-    #     results["results"]["content"]["content_has_tables"] = {
-    #         "value": table_count > 0,
-    #         "status": "Good" if table_count > 0 else "Needs Improvement",
-    #         "rating": 9 if table_count > 0 else 5,
-    #         "reason": f"Tables found: {table_count}"
-    #     }
+        results["results"]["content"]["content_has_tables"] = {
+            "value": table_count > 0,
+            "status": "Good" if table_count > 0 else "Needs Improvement",
+            "rating": 9 if table_count > 0 else 5,
+            "reason": f"Tables found: {table_count}"
+        }
     
+
+
+    
+    def check_responsive_design(soup, results):
+        viewport_meta = soup.find("meta", attrs={"name": "viewport"})
+        content = viewport_meta.get("content", "") if viewport_meta else ""
+        is_responsive = "width=device-width" in content
+
+        results["results"]["mobile"]["responsive_design"] = {
+            "value": content if is_responsive else False,  # Changed to show actual content
+            "status": "Good" if is_responsive else "Needs Improvement",
+            "rating": 9 if is_responsive else 5,
+            "reason": "Viewport meta tag indicates responsiveness" 
+                    if is_responsive 
+                    else "Viewport meta tag missing or not properly configured"
+        }
+
+
+
+
+    def check_duplicate_title_tags(soup, results, all_titles):
+        # all_titles = []
+        title_text = soup.title.string.strip() if soup.title and soup.title.string else ""
+
+        is_duplicate = title_text in all_titles
+        results["results"]["meta_tags"]["duplicate_title_tags"] = {
+            "value": is_duplicate,
+            "status": "Needs Improvement" if is_duplicate else "Good",
+            "rating": 5 if is_duplicate else 9,
+            "reason": "Duplicate title tag found" if is_duplicate else "Title tag is unique"
+        }
+        
+        all_titles.append(title_text)
+
+
+
+        
 
     # Execute all checks
     check_meta_tags(soup, results)
@@ -684,42 +932,42 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
     check_schema(soup,results)
     check_links(soup,results)
     check_validation(soup,results)
-    # check_responsive_design(soup, results)
+    check_responsive_design(soup, results)
     check_canonical_tag_valid(soup, results)
     check_robots_meta_tag_exists(soup, results)
     check_noindex_tag_check(soup, results)
     check_nofollow_tag_check(soup, results)
-    check_image_file_size_optimized(soup, results)
+    check_image_file_size_optimized(soup, results, url)
     check_image_dimensions_specified(soup, results)
     check_broken_internal_links(soup, results)
-    check_broken_external_links(soup, results)
+    check_broken_external_links(soup, results, url)
     check_nofollow_on_external_links(soup, results)
     check_gzip_compression_enabled(response, results)
     check_browser_caching_enabled(response, results)
-    check_redirects_minimized(results)
+    check_redirects_minimized(url, results)
     check_xml_sitemap_exists(url, results)
     check_keyword_in_title(soup, results, target_keyword)
     check_keyword_in_h1(soup, results, target_keyword)
     check_keyword_density(soup, results, target_keyword)
-    check_content_freshness(soup, results)
-    check_core_web_vitals_lcp(results)
-    check_core_web_vitals_fid(results)
-    check_core_web_vitals_cls(results)
+    check_content_freshness(url, soup, results)
+    # check_core_web_vitals_lcp(results)
+    # check_core_web_vitals_fid(results)
+    # check_core_web_vitals_cls(results)
     check_https_redirect(url, results)
-    check_structured_data_valid(soup, results)
+    # check_structured_data_valid(soup, results)
     check_internal_linking_depth(soup, results)
-    check_external_linking_quality(soup, results)
-    check_duplicate_content(soup, results)
-    check_page_depth(url, results)
+    # check_external_linking_quality(soup, results, url)
+    check_duplicate_title_tags(soup, results, all_titles = [])
+    # check_page_depth(url, results)
     check_content_readability(soup, results)
     check_social_meta_tags(soup, results)
     check_favicon_exists(soup, url, results)
-    # check_text_to_html_ratio(soup, results)
-    # check_iframe_usage(soup, results)
-    # ceck_flash_usage(soup, results)
-    # check_broken_resource_link(soup, url, results)
-    # check_content_has_lists(soup, results)
-    # check_content_has_tables(soup, results)
+    check_text_to_html_ratio(soup, results)
+    check_iframe_usage(soup, results)
+    check_flash_usage(soup, results)
+    check_broken_resource_link(soup, url, results)
+    check_content_has_lists(soup, results)
+    check_content_has_tables(soup, results)
 
     # Calculate overall rating
     total = 0
