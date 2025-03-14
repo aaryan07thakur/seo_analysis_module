@@ -15,19 +15,32 @@ from hashlib import md5
 import asyncio
 import aiohttp
 from dateutil import parser
-import functools
+from functools import wraps
 
 def measure_execution_time(func):
-    """Decorator to measure the execution time of a function."""
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        start_time = time.time()  # Start timer
-        result = func(*args, **kwargs)  # Execute the function
-        end_time = time.time()  # End timer
-        execution_time = round(end_time - start_time, 4)  # Calculate execution time
-        print(f"Function '{func.__name__}' executed in {execution_time} seconds")
-        return result  # Return the original function’s result
-    return wrapper
+    @wraps(func)
+    def sync_wrapper(*args, **kwargs):
+        start_time = time.time()
+        try:
+            result = func(*args, **kwargs)
+        finally:
+            end_time = time.time()
+            execution_time = round(end_time - start_time, 4)
+            print(f"{func.__name__} executed in {execution_time} seconds")
+        return result
+
+    @wraps(func)
+    async def async_wrapper(*args, **kwargs):
+        start_time = time.time()
+        try:
+            result = await func(*args, **kwargs)
+        finally:
+            end_time = time.time()
+            execution_time = round(end_time - start_time, 4)
+            print(f"{func.__name__} executed in {execution_time} seconds")
+        return result
+
+    return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
 
 
 
@@ -102,18 +115,17 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         "seo_rating": 0,
         "errors": {}
     }
-    response = None #initialize response to none.
+    response = None  # Initialize response to none.
+
     try:
-        # Fetch the page content only if soup is not provided
         if soup is None:
             response = requests.get(url, timeout=10)
-            response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
+            response.raise_for_status()
             soup = BeautifulSoup(response.content, 'html.parser')
     except Exception as e:
         results["errors"]["base"] = str(e)
-        return results  # Return immediately if there's an error fetching the page
+        return results
 
-    # Ensure the soup object is valid before proceeding
     if not isinstance(soup, BeautifulSoup):
         results["errors"]["base"] = "Invalid or missing HTML content"
         return results
@@ -1037,19 +1049,19 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
     @measure_execution_time
     async def check_page_load_time(response, results):
         if not response or not hasattr(response, "elapsed"):
-            results["errors"]["check_page_load_time"] = "Invalid response object"
+            results["results"]["performance"]["page_load_time"] = {
+                "value": None,
+                "status": "Error",
+                "rating": 1,
+                "reason": "Failed to measure load time, no response object"
+            }
             return
-
         load_time = round(response.elapsed.total_seconds(), 2)
-
-        # Ensure the necessary keys exist
-        performance = results.setdefault("results", {}).setdefault("performance", {})
-
-        performance["page_load_time"] = {
+        results["results"]["performance"]["page_load_time"] = {
             "value": load_time,
-            "status": "Good" if load_time < 3 else "Needs Improvement",
-            "rating": 10 if load_time < 3 else 5,
-            "reason": f"Loaded in {load_time}s" if load_time < 3 else "Slow load time"
+            "status": "Good" if load_time <= 3 else "Needs Improvement",
+            "rating": 10 if load_time <= 3 else 5,
+            "reason": f"Page load time: {load_time} seconds"
         }
 
     @measure_execution_time

@@ -3,20 +3,20 @@ from bs4 import BeautifulSoup
 import requests
 from app.models import seo_analysis_collection  # Import MongoDB collection
 from app.seo_rules import evaluate_seo_rules
-import logging
+from app.logger_config import logger
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler("app.log"),
-        logging.StreamHandler()
-    ]
-)
+# logging.basicConfig(
+#     level=logging.INFO,
+#     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+#     handlers=[
+#         logging.FileHandler("app.log"),
+#         logging.StreamHandler()
+#     ]
+# )
 
-# Initialize logger
-logger = logging.getLogger(__name__)
+# # Initialize logger
+# logger = logging.getLogger(__name__)
 
 # Initialize Celery
 celery_app = Celery("tasks", broker="redis://localhost:6379/0")  # Update for local Redis
