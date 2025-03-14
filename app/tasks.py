@@ -41,6 +41,7 @@ def perform_seo_analysis(scan_id: str, url: str):
         try:
             # Fetch the page content with a timeout
             response = requests.get(url, timeout=10)
+            response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
             soup = BeautifulSoup(response.content, "lxml")
 
             # Evaluate SEO rules

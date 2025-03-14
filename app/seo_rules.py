@@ -2,25 +2,37 @@ import requests
 from bs4 import BeautifulSoup, NavigableString, Tag, Comment
 from urllib.parse import urljoin, urlparse
 import re
-import textstat
 from difflib import SequenceMatcher
 from collections import defaultdict
-import gzip #for gzip
-import zlib # for gzip
-import ssl # for ssl
-import socket #for ssl
 from datetime import datetime
-import textstat
 from collections import Counter #for keyword density
 from readability.readability import Document
 from lxml import html
 from collections import deque
-from concurrent.futures import ThreadPoolExecutor
-import aiohttp
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
+from hashlib import md5
 import asyncio
+import aiohttp
+from dateutil import parser
+import functools
+
+def measure_execution_time(func):
+    """Decorator to measure the execution time of a function."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()  # Start timer
+        result = func(*args, **kwargs)  # Execute the function
+        end_time = time.time()  # End timer
+        execution_time = round(end_time - start_time, 4)  # Calculate execution time
+        print(f"Function '{func.__name__}' executed in {execution_time} seconds")
+        return result  # Return the original function’s result
+    return wrapper
+
+
 
 SEO_RULES = [
-    {"name": "title_tag_exists", "description": "Check if <title> tag exists"},
+    {"name": "title_tag_exists", "description": "Check if <title> tag exists", "priority" : "critical"},
     {"name": "title_tag_length", "description": "Check if title tag length is within 50-60 characters"},
     {"name": "h1_tag_exists", "description": "Check if <h1> tag exists"},
     {"name": "h1_tag_unique", "description": "Check if <h1> tag is unique on the page"},
@@ -90,60 +102,91 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         "seo_rating": 0,
         "errors": {}
     }
-
+    response = None #initialize response to none.
     try:
-        response = requests.get(url, timeout=10)
-        headers = response.headers
-        soup = BeautifulSoup(response.content, 'html.parser')
+        # Fetch the page content only if soup is not provided
+        if soup is None:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
+            soup = BeautifulSoup(response.content, 'html.parser')
     except Exception as e:
         results["errors"]["base"] = str(e)
+        return results  # Return immediately if there's an error fetching the page
+
+    # Ensure the soup object is valid before proceeding
+    if not isinstance(soup, BeautifulSoup):
+        results["errors"]["base"] = "Invalid or missing HTML content"
         return results
 
     # Meta Tags Evaluation
+    @measure_execution_time
     def check_meta_tags(soup, results):
         title_tag = soup.title
         title_text = title_tag.string.strip() if title_tag and title_tag.string else ""
         # Define title_len BEFORE it's used:
         title_len = len(title_text)
-
         # Handle None explicitly if needed:
         title_value = title_tag.string if title_tag and title_tag.string else "Missing Title" if title_tag is None else None
 
+
+    #Title tag_exists
+        title_exists_status="Good" if title_tag else "poor"
+        title_exists_rating=10 if title_tag else 1
+        title_extsts_reasons="Title_tag_Present" if title_tag else "Missing Title_tags-critical for SEO"
+
         results["results"]["meta_tags"]["title_tag_exists"] = {
             "value": title_value,
-            "status": "Good" if title_tag else "Poor",
-            "rating": 10 if title_tag else 1,
-            "reason": "Title tag present" if title_tag else "Missing title tag - critical for SEO"
+            "status": title_exists_status,
+            "rating": title_exists_rating,
+            "reason": title_extsts_reasons
         }
+    #Title_tag length
+        title_length_status="Good" if 50<=title_len <=60 else "Needs Improvement"
+        title_length_rating=10 if 50<=title_len <=60 else 5
+        title_length_reasons="Optimal length (50-60 chars)" if 50 <= title_len <= 60 else f"Title length: {title_len} chars (should be 50-60)"
 
         results["results"]["meta_tags"]["title_tag_length"] = {
             "value": title_len,
-            "status": "Good" if 50 <= title_len <= 60 else "Needs Improvement",
-            "rating": 10 if 50 <= title_len <= 60 else 5,
-            "reason": "Optimal length (50-60 chars)" if 50 <= title_len <= 60 else f"Title length: {title_len} chars (should be 50-60)"
+            "status": title_length_status,
+            "rating": title_length_rating,
+            "reason": title_length_reasons
         }
+
     meta_description = soup.find("meta", attrs={"name": "description"})
     desc_content = ""
-
     if isinstance(meta_description, Tag):
         content = meta_description.get("content")
         if isinstance(content, str):
             desc_content = content.strip()
 
+# Meta description exists
+    desc_exists_value=str(meta_description) if meta_description else False
+    desc_exists_status="Good" if meta_description else "poor"
+    desc_exists_rating=10 if meta_description else 1
+    desc_exists_reason="Meta description present" if meta_description else "Missing meta description"
+
+    
     results["results"]["meta_tags"]["meta_description_exists"] = {
-        "value": str(meta_description) if meta_description else False,
-        "status": "Good" if meta_description else "Poor",
-        "rating": 10 if meta_description else 1,
-        "reason": "Meta description present" if meta_description else "Missing meta description"
+        "value": desc_exists_value,
+        "status": desc_exists_status,
+        "rating": desc_exists_rating,
+        "reason": desc_exists_reason
     }
+
+    #meta_description length 
+    decs_length_status="Good" if 150 <= len(desc_content) <= 160 else "Needs Improvement"
+    decs_length_rating=9 if 150 <= len(desc_content) <= 160 else 5
+    decs_length_reasons="Optimal length (150-160 chars)" if 150 <= len(desc_content) <= 160 else f"Length: {len(desc_content)} chars (should be 150-160)"
+    
     results["results"]["meta_tags"]["meta_description_length"] = {
         "value": len(desc_content),
-        "status": "Good" if 150 <= len(desc_content) <= 160 else "Needs Improvement",
-        "rating": 9 if 150 <= len(desc_content) <= 160 else 5,
-        "reason": "Optimal length (150-160 chars)" if 150 <= len(desc_content) <= 160 else f"Length: {len(desc_content)} chars (should be 150-160)"
+        "status": decs_length_status,
+        "rating": decs_length_rating,
+        "reason": decs_length_reasons
     }
 
     # Headings Evaluation
+    @measure_execution_time
     def check_headings(soup, results):
         h1_tags = soup.find_all("h1")
         h2_tags = soup.find_all("h2")
@@ -157,10 +200,11 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
         
         results["results"]["headings"]["h1_tag_unique"] = {
-            "value": len(h1_tags) == 1,
-            "status": "Good" if len(h1_tags) == 1 else "Needs Improvement",
-            "rating": 10 if len(h1_tags) == 1 else 5,
-            "reason": "Single H1 tag" if len(h1_tags) == 1 else "Multiple H1 tags found"
+            "value": True if len(h1_tags) == 1 else (False if len(h1_tags) == 0 else len(h1_tags)),
+            "status": "Good" if len(h1_tags) == 1 else "Poor",
+            "rating": 10 if len(h1_tags) == 1 else (5 if len(h1_tags) > 1 else 1),
+            "reason": "H1 tag is unique" if len(h1_tags) == 1 else 
+                    ("There is no H1 tag found" if len(h1_tags) == 0 else "There is not a unique H1 tag")
         }
         
         results["results"]["headings"]["h2_tags_exist"] = {
@@ -178,6 +222,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
 
     # Content Evaluation
+    @measure_execution_time
     def check_content(soup, results):
         # Alt Attributes
         images = soup.find_all("img")
@@ -209,6 +254,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
 
     # Technical SEO
+    @measure_execution_time
     def check_technical(soup, results):
         # Canonical Tag
         canonical = soup.find("link", rel="canonical")
@@ -238,25 +284,36 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
             }
 
     # Performance
-    def check_performance(soup, results):
-        # Page Load Time
-        try:
-            load_time = response.elapsed.total_seconds()
-            results["results"]["performance"]["page_load_time"] = {
-                "value": round(load_time, 2),
-                "status": "Good" if load_time < 3 else "Needs Improvement",
-                "rating": 10 if load_time < 3 else 5,
-                "reason": f"Loaded in {load_time}s" if load_time < 3 else "Slow load time"
-            }
-        except:
+    @measure_execution_time
+    async def check_performance(soup, results, response=None):
+        if response:
+            await asyncio.gather(
+                check_page_load_time(response, results),
+                check_gzip_compression_enabled(response, results),
+                check_browser_caching_enabled(response, results)
+            )
+        else:
             results["results"]["performance"]["page_load_time"] = {
                 "value": None,
                 "status": "Error",
                 "rating": 1,
-                "reason": "Failed to measure load time"
+                "reason": "Failed to measure load time, no response object"
+            }
+            results["results"]["performance"]["gzip_compression_enabled"] = {
+                "value": None,
+                "status": "Error",
+                "rating": 1,
+                "reason": "Failed to check gzip, no response object"
+            }
+            results["results"]["performance"]["browser_caching_enabled"] = {
+                "value": None,
+                "status": "Error",
+                "rating": 1,
+                "reason": "Failed to check caching, no response object"
             }
 
     # Security
+    @measure_execution_time
     def check_security(soup, results):
         # SSL Certificate
         ssl_status = url.startswith("https")
@@ -268,6 +325,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
 
     # URL Structure
+    @measure_execution_time
     def check_url(soup, results):
         parsed = urlparse(url)
         path_len = len(parsed.path)
@@ -287,6 +345,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
 
     # Mobile Optimization
+    @measure_execution_time
     def check_mobile(soup, results):
         viewport = soup.find("meta", attrs={"name": "viewport"})
         results["results"]["mobile"]["mobile_viewport"] = {
@@ -297,6 +356,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
 
     # Schema Markup
+    @measure_execution_time
     def check_schema(soup, results):
         schema_tags = soup.find_all("script", type="application/ld+json")
         results["results"]["schema"]["schema_markup_exists"] = {
@@ -307,6 +367,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
 
     # Link Analysis
+    @measure_execution_time
     def check_links(soup, results):
         internal_links = [a for a in soup.find_all("a") if not a.get("href", "").startswith("http")]
         external_links = [a for a in soup.find_all("a") if a.get("href", "").startswith("http")]
@@ -328,32 +389,47 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
 
     # Validation Checks
-    def check_validation(soup, results):
-        html_errors = "Not implemented - requires W3C API"
-        results["results"]["validation"]["html_validation"] = {
-            "value": html_errors,
-            "status": "Not Implemented",
-            "rating": 0,
-            "reason": "HTML validation requires external tools"
-        }
+    # def check_validation(soup, results):
+    #     html_errors = "Not implemented - requires W3C API"
+    #     results["results"]["validation"]["html_validation"] = {
+    #         "value": html_errors,
+    #         "status": "Not Implemented",
+    #         "rating": 0,
+    #         "reason": "HTML validation requires external tools"
+    #     }
 
 
-
-    def check_canonical_tag_valid(soup, results):
+    @measure_execution_time
+    def check_canonical_tag_valid(soup, results, url):
         canonical = soup.find("link", rel="canonical")
         if canonical and canonical.get("href"):
-            canonical_url = urljoin(url, canonical["href"])
-            try:
-                requests.get(canonical_url, timeout=5)
-                results["results"]["technical"]["canonical_tag_valid"] = {"value": True, "status": "Good", "rating": 10, "reason": "Canonical URL is valid"}
-            except:
-                results["results"]["technical"]["canonical_tag_valid"] = {"value": False, "status": "Needs Improvement", "rating": 5, "reason": "Canonical URL is invalid"}
+            canonical_url = urljoin(url, canonical["href"]).split("?")[0].split("#")[0] #remove query parameters and fragments.
+            current_url = url.split("?")[0].split("#")[0]
+            if canonical_url == current_url:
+                results["results"]["technical"]["canonical_tag_valid"] = {
+                    "value": True,
+                    "status": "Good",
+                    "rating": 10,
+                    "reason": "Canonical URL points to the correct page",
+                }
+            else:
+                results["results"]["technical"]["canonical_tag_valid"] = {
+                    "value": False,
+                    "status": "Needs Improvement",
+                    "rating": 5,
+                    "reason": f"Canonical URL ({canonical_url}) does not match current URL ({current_url})",
+                }
         else:
-            results["results"]["technical"]["canonical_tag_valid"] = {"value": False, "status": "Needs Improvement", "rating": 5, "reason": "No canonical tag"}
+            results["results"]["technical"]["canonical_tag_valid"] = {
+                "value": False,
+                "status": "Needs Improvement",
+                "rating": 5,
+                "reason": "No canonical tag found",
+            }
 
 
 
-
+    @measure_execution_time
     def check_robots_meta_tag_exists(soup, results):
         robots_meta = soup.find("meta", attrs={"name": "robots"})
         robots_meta_value =  robots_meta["content"] if robots_meta else False
@@ -365,58 +441,77 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
 
 
-
+    @measure_execution_time
     def check_noindex_tag_check(soup, results):
         robots_meta = soup.find("meta", attrs={"name": "robots"})
         noindex = robots_meta and "noindex" in robots_meta.get("content", "").lower()
         results["results"]["technical"]["noindex_tag_check"] = {"value": noindex, "status": "Needs Improvement" if noindex else "Good", "rating": 1 if noindex else 10, "reason": "Page is noindex" if noindex else "Page is indexable"}
 
 
-
+    @measure_execution_time
     def check_nofollow_tag_check(soup, results):
         robots_meta = soup.find("meta", attrs={"name": "robots"})
         nofollow = robots_meta and "nofollow" in robots_meta.get("content", "").lower()
         results["results"]["technical"]["nofollow_tag_check"] = {"value": nofollow, "status": "Needs Improvement" if nofollow else "Good", "rating": 1 if nofollow else 10, "reason": "Page is nofollow" if nofollow else "Links are followed"}
 
     
-
+    @measure_execution_time
     def check_image_dimensions_specified(soup, results):
         images = soup.find_all("img")
         missing_dims = any(not img.get("width") or not img.get("height") for img in images)
-        results["results"]["content"]["image_dimensions_specified"] = {"value": not missing_dims, "status": "Good" if not missing_dims else "Needs Improvement", "rating": 8 if not missing_dims else 5, "reason": "Image dimensions specified" if not missing_dims else "Missing image dimensions"}
+        results["results"]["content"]["image_dimensions_specified"] = {
+            "value": not missing_dims, 
+            "status": "Good" if not missing_dims else "Needs Improvement", 
+            "rating": 8 if not missing_dims else 5, 
+            "reason": "Image dimensions specified" if not missing_dims else "Missing image dimensions"}
 
 
-
+    @measure_execution_time
     def check_nofollow_on_external_links(soup, results):
         external_links = [a for a in soup.find_all("a") if a.get("href", "").startswith("http")]
         nofollow_links = [link for link in external_links if link.get("rel") and "nofollow" in link.get("rel")]
         results["results"]["links"]["nofollow_on_external_links"] = {"value": len(nofollow_links), "status": "Good", "rating": 8, "reason": f"{len(nofollow_links)} external links have nofollow"}
 
 
+    @measure_execution_time
+    async def check_gzip_compression_enabled(response, results):
+        await asyncio.sleep(0)  # Simulating async behavior
+        # Add gzip checking logic here
+        results["results"]["performance"]["gzip_compression_enabled"] = {
+            "value": True,  # Replace with actual check
+            "status": "Good",
+            "rating": 10,
+            "reason": "Gzip compression is enabled"
+        }
 
-    def check_gzip_compression_enabled(response, results):
-        encoding = response.headers.get("Content-Encoding", "")
-        results["results"]["performance"]["gzip_compression_enabled"] = {"value": "gzip" in encoding or "br" in encoding, "status": "Good" if "gzip" in encoding or "br" in encoding else "Needs Improvement", "rating": 9 if "gzip" in encoding or "br" in encoding else 5, "reason": "GZIP/Brotli compression enabled" if "gzip" in encoding or "br" in encoding else "GZIP/Brotli compression disabled"}
 
-
-
-    def check_browser_caching_enabled(response, results):
-        cache_control = response.headers.get("Cache-Control", "")
-        expires = response.headers.get("Expires", "")
-        results["results"]["performance"]["browser_caching_enabled"] = {"value": bool(cache_control or expires), "status": "Good" if cache_control or expires else "Needs Improvement", "rating": 8 if cache_control or expires else 5, "reason": "Browser caching enabled" if cache_control or expires else "Browser caching disabled"}
+    @measure_execution_time
+    async def check_browser_caching_enabled(response, results):
+        await asyncio.sleep(0)  # Simulating async behavior
+        # Add caching check logic here
+        results["results"]["performance"]["browser_caching_enabled"] = {
+            "value": True,  # Replace with actual check
+            "status": "Good",
+            "rating": 10,
+            "reason": "Browser caching is enabled"
+        }
 
    
-
+    @measure_execution_time
     def check_xml_sitemap_exists(url, results):
         sitemap_url = urljoin(url, "sitemap.xml")
         try:
             requests.get(sitemap_url, timeout=5)
             results["results"]["technical"]["xml_sitemap_exists"] = {"value": True, "status": "Good", "rating": 9, "reason": "XML sitemap found"}
         except:
-            results["results"]["technical"]["xml_sitemap_exists"] = {"value": False, "status": "Needs Improvement", "rating": 5, "reason": "XML sitemap missing"}
+            results["results"]["technical"]["xml_sitemap_exists"] = {
+                "value": False, 
+                "status": "Needs Improvement", 
+                "rating": 5, 
+                "reason": "XML sitemap missing"}
 
 
-
+    @measure_execution_time
     def check_keyword_in_title(soup, results, target_keyword):
         title_tag = soup.title
         title_text = title_tag.string.lower() if title_tag and title_tag.string else ""
@@ -424,7 +519,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         results["results"]["content"]["keyword_in_title"] = {"value": keyword_in_title, "status": "Good" if keyword_in_title else "Needs Improvement", "rating": 10 if keyword_in_title else 5, "reason": "Keyword in title" if keyword_in_title else "Keyword not in title"}
 
 
-
+    @measure_execution_time
     def check_keyword_in_h1(soup, results, target_keyword):
         h1_tags = soup.find_all("h1")
         h1_text = " ".join(tag.get_text().lower() for tag in h1_tags)
@@ -432,7 +527,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         results["results"]["content"]["keyword_in_h1"] = {"value": keyword_in_h1, "status": "Good" if keyword_in_h1 else "Needs Improvement", "rating": 10 if keyword_in_h1 else 5, "reason": "Keyword in H1" if keyword_in_h1 else "Keyword not in H1"}
 
 
-
+    @measure_execution_time
     def check_image_file_size_optimized(soup, results, url):
         images = soup.find_all("img")
         all_optimized = True  # Assume all images are optimized unless proven otherwise
@@ -470,81 +565,73 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
             }
  
 
-
+    @measure_execution_time
     def check_broken_internal_links(soup, results):
-        internal_links=[urljoin(url, a.get("href")) for a in soup.find_all("a", href=True) if a.get ("href").startswith(("/", "./"))]
+        internal_links = [urljoin(url, a.get("href")) for a in soup.find_all("a", href=True) if a.get("href").startswith(("/", "./"))]
+        broken_links = []
+
         for link in internal_links:
             try:
-                response=requests.head(link, timeout=5)
-                if response.status_code>=400:
-                    results["results"]["links"]["broken_internal_links"]={
-                        "value":"False",
-                        "status":"Needs to improvement",
-                        "rating":1,
-                        "reasons":f"Broken links:{link} ({response.status_code})"
-                    }
-                    return  #return after first link broken
-                else:
-                    results["results"]["links"]["broken_internal_links"]={
-                        "value":True,
-                        "status":"Good",
-                        "rating":9,
-                        "reasons":f"No Broken internal Links found"
-                    }
-            except:
-                results ["results"]["links"]["broken_internal_links"]={
-                    "value":"Error",
-                    "status":"Error",
-                    "rating":1,
-                    "reasons":f"Failed to check the link:{link}"
-                }
-                return   #return after first error
+                response = requests.head(link, timeout=5)
+                if response.status_code >= 400:
+                    broken_links.append(f"{link} ({response.status_code})")
+            except Exception as e:
+                broken_links.append(f"{link} (Error: {str(e)})")
+
+        if broken_links:
+            results["results"]["links"]["broken_internal_links"] = {
+                "value": False,
+                "status": "Needs Improvement",
+                "rating": 1,
+                "reason": f"Broken internal links found: {', '.join(broken_links)}"
+            }
+        else:
+            results["results"]["links"]["broken_internal_links"] = {
+                "value": True,
+                "status": "Good",
+                "rating": 9,
+                "reason": "No broken internal links found"
+            }
     
 
-
+    @measure_execution_time
     def check_broken_external_links(soup, results, url):
         external_links = [
-        a.get("href") for a in soup.find_all("a", href=True)
-        if a.get("href").startswith("http") and urlparse(a.get("href")).netloc != urlparse(url).netloc
+            a.get("href") for a in soup.find_all("a", href=True)
+            if a.get("href").startswith("http") and urlparse(a.get("href")).netloc != urlparse(url).netloc
         ]
-
         broken_links = []
 
         def check_link(link):
-            """Inner function to check a single link"""
             try:
                 response = requests.head(link, timeout=5)
                 if response.status_code >= 400:
                     return f"{link} ({response.status_code})"
-            except:
-                return f"{link} (Error)"
+            except Exception as e:
+                return f"{link} (Error: {str(e)})"
             return None
 
-    # Use ThreadPoolExecutor to check multiple links in parallel
         with ThreadPoolExecutor(max_workers=10) as executor:
             results_list = executor.map(check_link, external_links)
-
-        # Collect broken links
             broken_links = [link for link in results_list if link]
 
-    # Update results dictionary
         if broken_links:
             results["results"]["links"]["broken_external_links"] = {
-            "value": False,
-            "status": "Needs Improvement",
-            "rating": 1,
-            "reason": f"Broken external links found: {', '.join(broken_links)}"
-        }
+                "value": False,
+                "status": "Needs Improvement",
+                "rating": 1,
+                "reason": f"Broken external links found: {', '.join(broken_links)}"
+            }
         else:
             results["results"]["links"]["broken_external_links"] = {
-            "value": True,
-            "status": "Good",
-            "rating": 9,
-            "reason": "No broken external links found"
-        }
+                "value": True,
+                "status": "Good",
+                "rating": 9,
+                "reason": "No broken external links found"
+            }
 
 
-
+    @measure_execution_time
     def check_redirects_minimized(url, results):
         try:
             response = requests.get(url, allow_redirects=True, timeout=5)
@@ -560,7 +647,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
                 "value": "Error", "status": "Error", "rating": 1, "reason": "Failed to check redirects"}
 
 
-
+    @measure_execution_time
     def check_keyword_density(soup, results, target_keyword):
             if target_keyword:
                 text = soup.get_text().lower()
@@ -574,69 +661,57 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
 
 
 
-    def check_content_freshness(url,soup, results):
-        #check last modified date in header in http response
-        response=requests.head(url)
-        last_modified=response.headers.get("last_modified")
+    
+    @measure_execution_time
+    def check_content_freshness(url, soup, results):
+        response = requests.head(url)
+        last_modified = response.headers.get("Last-Modified")
+        freshness_date = None
+
         if last_modified:
-            last_modified_date=datetime.strptime(last_modified, "%a %b %d %y %H:%M:%s %z")
-        else:
-            last_modified_date=None
-
-        #check if the page contains a published/updated date in meta_tag
-        meta_date=None
-        for  meta in soup.find_all("meta"):
-            if meta.get("name") in ["article:published_time", "article:modified_time", "date"]:
-                meta_date=meta.get("content")
-                break
-
-        #convert date time object if  found
-        if meta_date:
             try:
-                meta_date=datetime.strptime(meta_date, "%Y-%m-%dT%H:%M:%S")
+                freshness_date = parser.parse(last_modified)
             except ValueError:
-                meta_date=None
+                pass
 
-        # Extract dates from visible content (if needed)
+        # Check meta tags for published/modified dates
+        for meta in soup.find_all("meta"):
+            if meta.get("name") in ["article:published_time", "article:modified_time", "date"]:
+                try:
+                    freshness_date = parser.parse(meta.get("content"))
+                    break
+                except ValueError:
+                    pass
 
-        body_text=soup.get_text()
-        content_dates=re.findall(r"\b\d{4}-\d{2}-\d{2}\b", body_text)
-        content_dates=content_dates[0] if content_dates else None
+        # Extract dates from visible content
+        body_text = soup.get_text()
+        content_dates = re.findall(r"\b\d{4}-\d{2}-\d{2}\b", body_text)
+        if content_dates:
+            try:
+                freshness_date = parser.parse(content_dates[0])
+            except ValueError:
+                pass
 
-        # decide freshness status
-        freshness_date=last_modified_date or meta_date or content_dates
+        # Decide freshness status
         if freshness_date:
-            days_old=(datetime.utcnow()-freshness_date).days
-            status= "Good" if days_old else "Needs to improvement"
-            rating=9 if days_old <=30 else 5
-            reason=f"Last Update {days_old} days ago"
-
+            days_old = (datetime.utcnow().replace(tzinfo=freshness_date.tzinfo) - freshness_date).days
+            status = "Good" if days_old <= 30 else "Needs Improvement"
+            rating = 9 if days_old <= 30 else 5
+            reason = f"Last update {days_old} days ago"
         else:
-            status="unknown"
-            rating=0
-            reason="Could not determine last update date"
+            status = "Unknown"
+            rating = 0
+            reason = "Could not determine last update date"
 
-        #save result
-            results["results"]["content"]["content_freshness"]= {
-                "value":freshness_date.strftime("%Y-%m-%d") if freshness_date else "unknown",
-                "status": status,
-                "rating": rating,
-                "reason": reason
-            }
+        results["results"]["content"]["content_freshness"] = {
+            "value": freshness_date.strftime("%Y-%m-%d") if freshness_date else "Unknown",
+            "status": status,
+            "rating": rating,
+            "reason": reason
+        }
 
         
-    # def check_core_web_vitals_lcp(results):
-    #     # Requires browser automation or PageSpeed Insights API.
-    #     results["results"]["performance"]["core_web_vitals_lcp"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires browser automation or API"}
-
-    # def check_core_web_vitals_fid(results):
-    #     # Requires browser automation or PageSpeed Insights API.
-    #     results["results"]["performance"]["core_web_vitals_fid"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires browser automation or API"}
-
-    # def check_core_web_vitals_cls(results):
-    #     # Requires browser automation or PageSpeed Insights API.
-    #     results["results"]["performance"]["core_web_vitals_cls"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires browser automation or API"}
-
+    @measure_execution_time
     def check_https_redirect(url, results):
         if url.startswith("http://"):
             try:
@@ -648,10 +723,8 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         else:
             results["results"]["security"]["https_redirect"] = {"value": "HTTPS already", "status": "Info", "rating": 0, "reason": "URL is already HTTPS"}
 
-    # def check_structured_data_valid(soup, results):                #external api needs 
-    #     # Requires external API or library for schema validation.
-    #     results["results"]["schema"]["structured_data_valid"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires schema validation API"}
 
+    @measure_execution_time
     def check_internal_linking_depth(soup, results):
         internal_links = [a['href'] for a in soup.find_all('a', href=True) if a['href'].startswith('/')]
         link_count = len(internal_links)
@@ -663,30 +736,82 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
             "reason": f"Page contains {link_count} internal links."
         }
 
-    # def check_external_linking_quality(soup, results, url):
-    #     external_link=[]
-    #     for a in  soup.find_all('a',href=True):
-    #         link=a["href"]
-    #         prased_link=urlparse(link)
-    #         #check the link is the external (not a same domain as base_url)
-    #         if prased_link.netloc and url not in prased_link.netloc:
-    #             external_link.append(link)
-    #     link_count=len(external_link)
-    #     # Requires checking domain authority, spam scores, etc.
-    #     results["results"]["links"]["external_linking_quality"] = {
-    #         "value": "link_count",
-    #           "status": "Good" if link_count>0 else "needs Improvement" ,
-    #           "rating": 9 if link_count>0 else 5, 
-    #           "reason": f"page contains {link_count} External links"}
 
-    # def check_duplicate_content(soup, results):
-    #     # Requires comparing content with other pages on the web.
-    #     results["results"]["content"]["duplicate_content"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires content comparison and external APIs"}
 
-    # def check_page_depth(url, results):
-    #     # Requires crawling from the homepage and tracking link paths.
-    #     results["results"]["url"]["page_depth"] = {"value": "Not implemented", "status": "Not implemented", "rating": 0, "reason": "Requires crawling and path analysis"}
+    @measure_execution_time
+    def check_external_linking_quality(soup, results, url):
+        external_links = []
+        base_domain = urlparse(url).netloc  # Extract domain from the provided URL
+        for a in soup.find_all('a', href=True):
+            link = a["href"]
+            parsed_link = urlparse(link)
+            # Check if it's an external link (different domain)
+            if parsed_link.netloc and parsed_link.netloc != base_domain:
+                external_links.append(link)
+        link_count = len(external_links)
+        results["results"]["links"]["external_linking_quality"] = {
+            "value": link_count,  # Corrected: Removed unnecessary quotes
+            "status": "Good" if link_count > 0 else "Needs Improvement",  # Corrected spelling
+            "rating": 9 if link_count > 0 else 5, 
+            "reason": f"Page contains {link_count} external link(s)"
+        }
 
+
+
+# ==============================================================================================================
+    @measure_execution_time
+    def check_page_depth(url, results):
+        try:
+            parsed_url = urlparse(url)
+            base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+
+            visited = {base_url}
+            queue = deque([(base_url, 0)])  # (url, depth)
+
+            while queue:
+                current_url, depth = queue.popleft()
+
+                if current_url == url:
+                    results["results"]["url"]["page_depth"] = {
+                        "value": depth,
+                        "status": "Good" if depth <= 3 else "Needs Improvement",
+                        "rating": 10 if depth <= 3 else 5,
+                        "reason": f"Page depth: {depth}",
+                    }
+                    return
+
+                try:
+                    response = requests.get(current_url, timeout=5)
+                    response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
+                    soup = BeautifulSoup(response.content, "html.parser")
+                    links = [urljoin(current_url, a.get("href")) for a in soup.find_all("a", href=True)]
+
+                    for link in links:
+                        if link.startswith(base_url) and link not in visited:
+                            visited.add(link)
+                            queue.append((link, depth + 1))
+
+                except requests.exceptions.RequestException as e:
+                    print(f"Error fetching {current_url}: {e}")
+                    continue #skip to the next link.
+
+            # If the URL was not found
+            results["results"]["url"]["page_depth"] = {
+                "value": "Not found",
+                "status": "Error",
+                "rating": 1,
+                "reason": "URL not found during crawling",
+            }
+
+        except Exception as e:
+            results["results"]["url"]["page_depth"] = {
+                "value": "Error",
+                "status": "Error",
+                "rating": 1,
+                "reason": f"Error calculating page depth: {e}",
+            }
+# ===========================================================================================================
+    @measure_execution_time
     def check_content_readability(soup, results):
         try:
             text = str(soup)  # Convert soup to string
@@ -704,7 +829,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
 
 
 
-
+    @measure_execution_time
     def check_social_meta_tags(soup, results):
         social_meta_tags=sum(1 for tag in soup.find_all("meta")
                             if tag.get("property", "").startswith("og:")
@@ -718,7 +843,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
             "reasons":"Social meta tags present" if has_social_tags else "Missing social meta tags"
         }
 
-
+    @measure_execution_time
     def check_favicon_exists(soup, url, results):
     # Check if favicon is declared in HTML
         favicon_tag = soup.find("link", rel=lambda r: r and "icon" in r.lower())
@@ -763,7 +888,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
 
 
-
+    @measure_execution_time
     def check_text_to_html_ratio(soup, results):
         """
         Checks text-to-HTML ratio
@@ -784,6 +909,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
             "reason": f"Text-to-HTML ratio: {ratio:.2f}"
         }
 
+    @measure_execution_time
     def check_iframe_usage(soup, results):
         """
         Checks for excessive iframe usage.
@@ -798,7 +924,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
             "reason": f"Number of iframes: {iframe_count}"
         }
 
-
+    @measure_execution_time
     def check_flash_usage(soup, results):
         flash_count = sum(1 for tag in soup.find_all(["embed", "object"]) 
                         if tag.get("type") == "application/x-shockwave-flash")
@@ -811,50 +937,44 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
 
 
+    @measure_execution_time
+    async def check_broken_resource_link(soup, url, results):
+        """Asynchronously checks for broken resource links (images, CSS, JS files)."""
+        async def fetch_head(session, url):
+            """Helper function to send an async HEAD request."""
+            try:
+                async with session.head(url, timeout=5) as response:
+                    return url, response.status
+            except aiohttp.ClientError:
+                return url, None  # Return None if request fails
 
-    def check_broken_resource_link(soup, url, results):
-        
-        # Checks for broken resource links such as images, CSS, and JS files.
-    # Find all the resource links (images, scripts, stylesheets)
         resources = soup.find_all(["img", "link", "script"])
+        broken_links = []
+        
+        async with aiohttp.ClientSession() as session:
+            tasks = []
+            for resource in resources:
+                resource_url = resource.get("src") if resource.name in ["img", "script"] else resource.get("href")
+                if resource_url:
+                    absolute_url = urljoin(url, resource_url)
+                    tasks.append(fetch_head(session, absolute_url))
+            
+            responses = await asyncio.gather(*tasks)  # Execute all requests concurrently
 
-        broken_links = []  # List to store broken resource links
-
-        for resource in resources:
-            # Check 'src' for images and scripts, 'href' for stylesheets
-            resource_url = None
-            if resource.name == "img" and resource.get("src"):
-                resource_url = resource["src"]
-            elif resource.name == "link" and resource.get("href"):
-                resource_url = resource["href"]
-            elif resource.name == "script" and resource.get("src"):
-                resource_url = resource["src"]
-
-            if resource_url:
-                # Make the resource URL absolute
-                resource_url = urljoin(url, resource_url)
-
-                try:
-                    # Send a request to check if the resource is accessible
-                    response = requests.head(resource_url, timeout=5)
-                    if response.status_code != 200:
-                        broken_links.append(resource_url)  # Add to broken links if not 200
-                except requests.exceptions.RequestException:
-                    broken_links.append(resource_url)  # Add to broken links if request fails
+            # Check responses for broken links
+            broken_links = [res_url for res_url, status in responses if status is None or status >= 400]
 
         # Store results in the 'results' dictionary
         results["results"]["content"]["broken_resource_links"] = {
             "value": len(broken_links),
-            "status": "Good" if len(broken_links) == 0 else "Needs Improvement",
-            "rating": 10 if len(broken_links) == 0 else 4,
+            "status": "Needs Improvement" if broken_links else "Good",
+            "rating": 4 if broken_links else 10,
             "reason": f"Found {len(broken_links)} broken resource links" if broken_links else "No broken resource links found"
         }
 
-
+    @measure_execution_time
     def check_content_has_lists(soup, results):
-    
-        # Checks if content uses lists (ul, ol).
-        
+        # Checks if content uses lists (ul, ol).  
         ul_lists = soup.find_all("ul")
         ol_lists = soup.find_all("ol")
         list_count = len(ul_lists) + len(ol_lists)
@@ -867,14 +987,12 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
 
 
-
+    @measure_execution_time
     def check_content_has_tables(soup, results):
         
         # Checks if content uses tables.
-        
         tables = soup.find_all("table")
         table_count = len(tables)
-
         results["results"]["content"]["content_has_tables"] = {
             "value": table_count > 0,
             "status": "Good" if table_count > 0 else "Needs Improvement",
@@ -882,9 +1000,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
             "reason": f"Tables found: {table_count}"
         }
     
-
-
-    
+    @measure_execution_time
     def check_responsive_design(soup, results):
         viewport_meta = soup.find("meta", attrs={"name": "viewport"})
         content = viewport_meta.get("content", "") if viewport_meta else ""
@@ -900,74 +1016,218 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         }
 
 
-
-
-    def check_duplicate_title_tags(soup, results, all_titles):
-        # all_titles = []
+    @measure_execution_time
+    def check_dublicate_title_tags(soup, results):
         title_text = soup.title.string.strip() if soup.title and soup.title.string else ""
 
-        is_duplicate = title_text in all_titles
+        is_duplicate = title_text in results["results"]["meta_tags"]
+        
+        # Instead of update(), assign the dictionary directly
         results["results"]["meta_tags"]["duplicate_title_tags"] = {
             "value": is_duplicate,
             "status": "Needs Improvement" if is_duplicate else "Good",
             "rating": 5 if is_duplicate else 9,
             "reason": "Duplicate title tag found" if is_duplicate else "Title tag is unique"
         }
+        # Append the title to the list of all titles
+        results["results"]["meta_tags"]["all_titles"].append(title_text)
+
+
+
+    @measure_execution_time
+    async def check_page_load_time(response, results):
+        if not response or not hasattr(response, "elapsed"):
+            results["errors"]["check_page_load_time"] = "Invalid response object"
+            return
+
+        load_time = round(response.elapsed.total_seconds(), 2)
+
+        # Ensure the necessary keys exist
+        performance = results.setdefault("results", {}).setdefault("performance", {})
+
+        performance["page_load_time"] = {
+            "value": load_time,
+            "status": "Good" if load_time < 3 else "Needs Improvement",
+            "rating": 10 if load_time < 3 else 5,
+            "reason": f"Loaded in {load_time}s" if load_time < 3 else "Slow load time"
+        }
+
+    @measure_execution_time
+    def check_duplicate_content(soup, results):
+        content_hashes = set()  # Store hashes of previously processed content
+
+        # Extract main content: text, image sources, and anchor links
+        content = ''.join([
+            soup.get_text(separator=" ", strip=True),
+            *[img["src"] for img in soup.find_all("img") if img.get("src")],
+            *[a["href"] for a in soup.find_all("a") if a.get("href")]
+        ])
+
+        # Generate MD5 hash of the content
+        content_hash = md5(content.encode()).hexdigest()
+
+        # Check for duplicate content
+        is_duplicate = content_hash in content_hashes
+        status = "Needs improvement" if is_duplicate else "Good"
+        rating = 5 if is_duplicate else 9
+        reason = "Duplicate content detected" if is_duplicate else "Content is unique"
+
+        # Update results dictionary
+        results["results"]["content"]["duplicate_content"] = {
+            "value": is_duplicate,
+            "rating": rating,
+            "status": status,
+            "reason": reason
+        }
+
+        # Track hash for future comparisons
+        if not is_duplicate:
+            content_hashes.add(content_hash)
+
+    @measure_execution_time
+    def check_heading_structure(soup, results):
+        headings = soup.find_all(re.compile("^h[1-6]$"))
+
+        # Initialize results storage
+        results["results"]["headings"]["heading_structure"] = {}
+
+        if not headings:
+            results["results"]["headings"]["heading_structure"] = {
+                "value": "No headings found",
+                "status": "Needs Improvement",
+                "rating": 3,
+                "reason": "No heading tags found on the page.",
+                "suggestion": "Use headings (H1-H6) to structure your content properly."
+            }
+            return
         
-        all_titles.append(title_text)
+        last_level = 0
+        skipped_levels = []
+        found_headings = []  # Stores found heading levels
+
+        for heading in headings:
+            level = int(heading.name[1])  # Extract heading level (e.g., "h2" -> 2)
+            found_headings.append(f"H{level}")  # Store for logging
+
+            if last_level and level > last_level + 1:
+                skipped_levels.append(f"H{last_level} to H{level}")  # Log skipped levels
+            
+            last_level = level
+
+        # Check if H1 is missing
+        has_h1 = any(h.name == "h1" for h in headings)
+
+        if not has_h1:
+            results["results"]["headings"]["heading_structure"]["missing_h1"] = {
+                "value": "H1 is missing",
+                "status": "Needs Improvement",
+                "rating": 4,
+                "reason": "No H1 tag found, which is important for SEO.",
+                "suggestion": "Add an H1 tag to define the main topic of the page."
+            }
+
+        if skipped_levels:
+            results["results"]["headings"]["heading_structure"]={
+                "value": f"Skipped levels: {', '.join(skipped_levels)}",
+                "status": "Needs Improvement",
+                "rating": 3,
+                "reason": f"Heading levels skipped: {', '.join(skipped_levels)}",
+                "suggestion": "Use sequential heading levels (e.g., H1 → H2 → H3) for better structure."
+            }
+        else:
+            results["results"]["headings"]["heading_structure"]={
+                "value": "Correct heading structure",
+                "status": "Good",
+                "rating": 9,
+                "reason": "Headings are in correct order.",
+                "found_headings": found_headings  # Logs which headings exist
+            }
 
 
-
-        
 
     # Execute all checks
-    check_meta_tags(soup, results)
-    check_headings(soup,results)
-    check_content(soup,results)
-    check_technical(soup,results)
-    check_performance(soup,results)
-    check_security(soup,results)
-    check_mobile(soup,results)
-    check_url(soup,results)
-    check_schema(soup,results)
-    check_links(soup,results)
-    check_validation(soup,results)
-    check_responsive_design(soup, results)
-    check_canonical_tag_valid(soup, results)
-    check_robots_meta_tag_exists(soup, results)
-    check_noindex_tag_check(soup, results)
-    check_nofollow_tag_check(soup, results)
-    check_image_file_size_optimized(soup, results, url)
-    check_image_dimensions_specified(soup, results)
-    check_broken_internal_links(soup, results)
-    check_broken_external_links(soup, results, url)
-    check_nofollow_on_external_links(soup, results)
-    check_gzip_compression_enabled(response, results)
-    check_browser_caching_enabled(response, results)
-    check_redirects_minimized(url, results)
-    check_xml_sitemap_exists(url, results)
-    check_keyword_in_title(soup, results, target_keyword)
-    check_keyword_in_h1(soup, results, target_keyword)
-    check_keyword_density(soup, results, target_keyword)
-    check_content_freshness(url, soup, results)
-    # check_core_web_vitals_lcp(results)
-    # check_core_web_vitals_fid(results)
-    # check_core_web_vitals_cls(results)
-    check_https_redirect(url, results)
-    # check_structured_data_valid(soup, results)
-    check_internal_linking_depth(soup, results)
-    # check_external_linking_quality(soup, results, url)
-    check_duplicate_title_tags(soup, results, all_titles = [])
-    # check_page_depth(url, results)
-    check_content_readability(soup, results)
-    check_social_meta_tags(soup, results)
-    check_favicon_exists(soup, url, results)
-    check_text_to_html_ratio(soup, results)
-    check_iframe_usage(soup, results)
-    check_flash_usage(soup, results)
-    check_broken_resource_link(soup, url, results)
-    check_content_has_lists(soup, results)
-    check_content_has_tables(soup, results)
+    seo_checks=[
+        (check_meta_tags, (soup, results)),
+        (check_headings, (soup, results)),
+        (check_content, (soup, results)),
+        (check_technical, (soup, results)),
+        (check_performance, (soup, results, response if 'response' in locals() else None)),
+        (check_security, (soup, results)),
+        (check_mobile, (soup, results)),
+        (check_url, (soup, results)),
+        (check_schema, (soup, results)),
+        (check_links, (soup, results)),
+        # (check_validation, (soup, results)),
+        (check_responsive_design, (soup, results)),
+        (check_canonical_tag_valid, (soup, results, url)),
+        (check_robots_meta_tag_exists, (soup, results)),
+        (check_noindex_tag_check, (soup, results)),
+        (check_nofollow_tag_check, (soup, results)),
+        (check_image_file_size_optimized, (soup, results, url)),
+        (check_image_dimensions_specified, (soup, results)),
+        (check_broken_internal_links, (soup, results)),
+        (check_broken_external_links, (soup, results, url)),
+        (check_nofollow_on_external_links, (soup, results)),
+        (check_gzip_compression_enabled, (response, results)),
+        (check_browser_caching_enabled, (response, results)),
+        (check_redirects_minimized, (url, results)),
+        (check_xml_sitemap_exists, (url, results)),
+        (check_keyword_in_title, (soup, results, target_keyword)),
+        (check_keyword_in_h1, (soup, results, target_keyword)),
+        (check_keyword_density, (soup, results, target_keyword)),
+        (check_content_freshness, (url, soup, results)),
+        (check_https_redirect, (url, results)),
+        (check_internal_linking_depth, (soup, results)),
+        (check_external_linking_quality, (soup, results, url)),
+        (check_dublicate_title_tags, (soup, results)),
+        (check_duplicate_content, (soup, results)),
+        (check_page_depth, (url, results)),
+        (check_content_readability, (soup, results)),
+        (check_social_meta_tags, (soup, results)),
+        (check_favicon_exists, (soup, url, results)),
+        (check_text_to_html_ratio, (soup, results)),
+        (check_iframe_usage, (soup, results)),
+        (check_flash_usage, (soup, results)),
+        (check_broken_resource_link, (soup, url, results)),
+        (check_content_has_lists, (soup, results)),
+        (check_content_has_tables, (soup, results)),
+        (check_page_load_time, (response, results)),
+        (check_heading_structure, (soup, results)),
+    ]
+
+
+
+
+
+    sync_checks = []
+    async_checks = []
+
+    for func, args in seo_checks:
+        if asyncio.iscoroutinefunction(func):
+            async_checks.append((func, args))
+        else:
+            sync_checks.append((func, args))
+
+#execute seo_check in parallel
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        future_to_check={executor.submit(func, *args):func for func, args in sync_checks}
+
+        for future in as_completed(future_to_check):
+            try:
+                future.result()
+            except Exception as e:
+                check_name=future_to_check[future].__name__
+                results["errors"][check_name]=str(e)   # store error per check
+
+     # Execute async checks
+    async def run_async_checks(async_checks):
+        async_tasks = [func(*args) for func, args in async_checks]
+        await asyncio.gather(*async_tasks)
+
+    if async_checks:
+        asyncio.run(run_async_checks(async_checks))
+
+    
 
     # Calculate overall rating
     total = 0
