@@ -1,8 +1,8 @@
 import requests
-from bs4 import BeautifulSoup, NavigableString, Tag, Comment
+from bs4 import BeautifulSoup, Tag
 from urllib.parse import urljoin, urlparse
 import re
-from difflib import SequenceMatcher
+# from difflib import SequenceMatcher
 from collections import defaultdict
 from datetime import datetime
 from collections import Counter #for keyword density
