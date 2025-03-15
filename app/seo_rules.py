@@ -16,6 +16,7 @@ import asyncio
 import aiohttp
 from dateutil import parser
 from functools import wraps
+from aiohttp import ClientTimeout
 
 def measure_execution_time(func):
     @wraps(func)
@@ -510,17 +511,24 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
 
    
     @measure_execution_time
-    def check_xml_sitemap_exists(url, results):
+    async def check_xml_sitemap_exists(url, results):
         sitemap_url = urljoin(url, "sitemap.xml")
-        try:
-            requests.get(sitemap_url, timeout=5)
-            results["results"]["technical"]["xml_sitemap_exists"] = {"value": True, "status": "Good", "rating": 9, "reason": "XML sitemap found"}
-        except:
-            results["results"]["technical"]["xml_sitemap_exists"] = {
-                "value": False, 
-                "status": "Needs Improvement", 
-                "rating": 5, 
-                "reason": "XML sitemap missing"}
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.get(url, timeout=ClientTimeout(total=5)) as response:
+                    results["results"]["technical"]["xml_sitemap_exists"] = {
+                        "value": response.status == 200,
+                        "status": "Good" if response.status == 200 else "Needs Improvement",
+                        "rating": 9 if response.status == 200 else 5,
+                        "reason": "XML sitemap found" if response.status == 200 else "XML sitemap missing"
+                    }
+            except Exception as e:
+                results["results"]["technical"]["xml_sitemap_exists"] = {
+                    "value": False,
+                    "status": "Error",
+                    "rating": 1,
+                    "reason": f"Failed to check sitemap: {str(e)}"
+                }
 
 
     @measure_execution_time
@@ -825,19 +833,15 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
 # ===========================================================================================================
     @measure_execution_time
     def check_content_readability(soup, results):
-        try:
-            text = str(soup)  # Convert soup to string
-            tree = html.fromstring(text)
-            doc = Document(text)  # Use Document instead of Readability
-            readability_score = len(doc.summary())  # Just an example metric
-            results["results"]["content"]["content_readability"] = {
-                "value": readability_score,
-                "status": "Good" if readability_score > 50 else "Needs Improvement",
-                "rating": 9 if readability_score > 50 else 5,
-                "reason": f"Readability Score: {readability_score}"
-            }
-        except Exception as e:
-            print("Error:", e)
+        text = soup.get_text(separator=' ', strip=True)
+        word_count = len(text.split())
+        readability_score = word_count / 100  # Simplified metric
+        results["results"]["content"]["content_readability"] = {
+            "value": readability_score,
+            "status": "Good" if readability_score > 5 else "Needs Improvement",
+            "rating": 9 if readability_score > 5 else 5,
+            "reason": f"Readability Score: {readability_score}"
+        }
 
 
 

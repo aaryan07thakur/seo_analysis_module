@@ -4,6 +4,8 @@ from app.models import seo_analysis_collection
 from app.tasks import perform_seo_analysis
 import uuid
 from typing import Optional, Dict
+from app.logger_config import logger  # Import logger for FastAPI
+
 
 app = FastAPI()
 
@@ -27,7 +29,13 @@ def start_analysis(request: AnalysisRequest):
         "status": "pending",
         "result": None  # Explicitly set result to None
     }
-    seo_analysis_collection.insert_one(scan)
+    try:
+        seo_analysis_collection.insert_one(scan)  # Insert scan into MongoDB
+        logger.info(f"Scan object inserted with ID: {scan_id}")
+    except Exception as e:
+        logger.error(f"Error inserting scan object: {e}")
+        raise HTTPException(status_code=500, detail="Error inserting scan object")
+
 
     # Trigger Celery task
     perform_seo_analysis.delay(scan_id, request.url)
@@ -41,8 +49,10 @@ def start_analysis(request: AnalysisRequest):
 
 @app.get("/get-analysis/{scan_id}", response_model=AnalysisResponse)
 def get_analysis(scan_id: str):
+    logger.info(f"Fetching scan details for scan ID: {scan_id}")
     scan = seo_analysis_collection.find_one({"_id": scan_id})
     if not scan:
+        logger.warning(f"Scan with ID {scan_id} not found")
         raise HTTPException(status_code=404, detail="Scan not found")
     
     # Return the response with the correct fields

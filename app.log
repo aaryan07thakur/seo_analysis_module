@@ -1,0 +1,9 @@
+
+2025-03-16 00:46:02,083 - app.logger_config - INFO - Scan object inserted with ID: 264408ca-71bc-4cc1-984b-142f1297fe17
+2025-03-16 00:46:20,548 - app.logger_config - INFO - Fetching scan details for scan ID: 264408ca-71bc-4cc1-984b-142f1297fe17
+2025-03-16 00:48:53,888 - app.logger_config - INFO - Scan object inserted with ID: afa13921-483a-4bb0-84a1-7f326df8f933
+2025-03-16 00:49:12,983 - app.logger_config - INFO - Fetching scan details for scan ID: afa13921-483a-4bb0-84a1-7f326df8f933
+2025-03-16 01:19:58,476 - app.logger_config - INFO - Fetching scan details for scan ID: afa13921-483a-4bb0-84a1-7f326df8f933
+2025-03-16 01:38:26,013 - app.logger_config - INFO - Scan object inserted with ID: 3752fb02-61d6-46c1-881b-c5d3a483bfc7
+2025-03-16 01:38:42,924 - app.logger_config - INFO - Fetching scan details for scan ID: 3752fb02-61d6-46c1-881b-c5d3a483bfc7
+2025-03-16 01:41:36,010 - app.logger_config - INFO - Fetching scan details for scan ID: 3752fb02-61d6-46c1-881b-c5d3a483bfc7

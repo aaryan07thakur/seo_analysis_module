@@ -1,63 +1,51 @@
 from celery import Celery
 from bs4 import BeautifulSoup
 import requests
-from app.models import seo_analysis_collection  # Import MongoDB collection
+from app.models import seo_analysis_collection
 from app.seo_rules import evaluate_seo_rules
-from app.logger_config import logger
-
-# Configure logging
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-#     handlers=[
-#         logging.FileHandler("app.log"),
-#         logging.StreamHandler()
-#     ]
-# )
-
-# # Initialize logger
-# logger = logging.getLogger(__name__)
+from app.logger_config import logger  # Import logger for Celery
 
 # Initialize Celery
-celery_app = Celery("tasks", broker="redis://localhost:6379/0")  # Update for local Redis
+celery_app = Celery("tasks", broker="redis://localhost:6379/0")
 celery_app.conf.broker_connection_retry_on_startup = True
-celery_app.conf.worker_pool = "solo"
+celery_app.conf.worker_pool = "solo"  # Set worker pool to solo for easier debugging
 
 @celery_app.task
 def perform_seo_analysis(scan_id: str, url: str):
     try:
-        # Fetch the scan object
+        logger.info(f"Received SEO analysis request for URL: {url} with scan_id {scan_id}")
+
+        # Fetch the scan object from MongoDB
         scan = seo_analysis_collection.find_one({"_id": scan_id})
         if not scan:
             logger.error(f"Scan with ID {scan_id} not found.")
             return
 
-        logger.info(f"Starting SEO analysis for scan ID {scan_id}, URL: {url}")
-
         # Update status to "in_progress"
         seo_analysis_collection.update_one({"_id": scan_id}, {"$set": {"status": "in_progress"}})
         logger.info(f"Updated status to 'in_progress' for scan ID {scan_id}")
 
+        # Perform SEO analysis
         try:
-            # Fetch the page content with a timeout
+            logger.info(f"Fetching page content for URL: {url}")
             response = requests.get(url, timeout=10)
-            response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
+            response.raise_for_status()  # Raise HTTPError for bad responses
             soup = BeautifulSoup(response.content, "lxml")
 
-            # Evaluate SEO rules
             results = evaluate_seo_rules(soup, url)
+            logger.info(f"SEO analysis completed for scan ID {scan_id}. Results: {results}")
 
-            # Update result and status
+            # Update result and status in MongoDB
             seo_analysis_collection.update_one(
                 {"_id": scan_id},
                 {"$set": {"status": "completed", "result": results}}
             )
-            logger.info(f"SEO analysis completed for scan ID {scan_id}")
         except Exception as e:
-            logger.error(f"Error during SEO analysis for scan ID {scan_id}: {str(e)}")
+            logger.error(f"Error during SEO analysis for scan ID {scan_id}: {e}")
             seo_analysis_collection.update_one(
                 {"_id": scan_id},
                 {"$set": {"status": "failed", "result": {"error": str(e)}}}
             )
+            return
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
+        logger.error(f"Unexpected error in task for scan ID {scan_id}: {e}")
