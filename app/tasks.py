@@ -28,12 +28,12 @@ def perform_seo_analysis(scan_id: str, url: str):
         # Perform SEO analysis
         try:
             logger.info(f"Fetching page content for URL: {url}")
-            response = requests.get(url, timeout=10)
+            response = requests.get(url, timeout=10)       #Sends an HTTP request to fetch the webpage content
             response.raise_for_status()  # Raise HTTPError for bad responses
             soup = BeautifulSoup(response.content, "lxml")
 
-            results = evaluate_seo_rules(soup, url)
-            logger.info(f"SEO analysis completed for scan ID {scan_id}. Results: {results}")
+            results = evaluate_seo_rules(soup, url)      #Calls the evaluate_seo_rules() function to analyze the page based on SEO rules.
+            logger.info(f"SEO analysis completed for scan ID {scan_id}. Results: {results}")    #stores the Results in results
 
             # Update result and status in MongoDB
             seo_analysis_collection.update_one(

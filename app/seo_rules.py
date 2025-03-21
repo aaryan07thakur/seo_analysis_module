@@ -268,8 +268,8 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
 
     # Technical SEO
     @measure_execution_time
-    def check_technical(soup, results):
-        # Canonical Tag
+    async def check_technical(soup, results, url):
+    # Canonical Tag Check (Fast and Local)
         canonical = soup.find("link", rel="canonical")
         results["results"]["technical"]["canonical_tag_exists"] = {
             "value": bool(canonical),
@@ -277,18 +277,20 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
             "rating": 8 if canonical else 5,
             "reason": "Canonical tag present" if canonical else "Missing canonical tag"
         }
-        
-        # Robots.txt
+
+        # Robots.txt Check (Asynchronous and Faster)
         robots_url = f"{url.rstrip('/')}/robots.txt"
         try:
-            robots_resp = requests.get(robots_url, timeout=5)
-            results["results"]["technical"]["robots_txt_exists"] = {
-                "value": robots_resp.status_code == 200,
-                "status": "Good" if robots_resp.status_code == 200 else "Needs Improvement",
-                "rating": 9 if robots_resp.status_code == 200 else 5,
-                "reason": "robots.txt found" if robots_resp.status_code == 200 else "Missing robots.txt"
-            }
-        except:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(robots_url, timeout=ClientTimeout(total=2)) as response:  # Reduced timeout for speed
+                    robots_exists = response.status == 200
+                    results["results"]["technical"]["robots_txt_exists"] = {
+                        "value": robots_exists,
+                        "status": "Good" if robots_exists else "Needs Improvement",
+                        "rating": 9 if robots_exists else 5,
+                        "reason": "robots.txt found" if robots_exists else "Missing robots.txt"
+                    }
+        except Exception:
             results["results"]["technical"]["robots_txt_exists"] = {
                 "value": False,
                 "status": "Error",
@@ -486,8 +488,8 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         results["results"]["links"]["nofollow_on_external_links"] = {"value": len(nofollow_links), "status": "Good", "rating": 8, "reason": f"{len(nofollow_links)} external links have nofollow"}
 
 
-    @measure_execution_time
-    async def check_gzip_compression_enabled(response, results):
+    @measure_execution_time     
+    async def check_gzip_compression_enabled(response, results):   #not properly implemented
         await asyncio.sleep(0)  # Simulating async behavior
         # Add gzip checking logic here
         results["results"]["performance"]["gzip_compression_enabled"] = {
@@ -548,41 +550,106 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
 
 
     @measure_execution_time
-    def check_image_file_size_optimized(soup, results, url):
-        images = soup.find_all("img")
-        all_optimized = True  # Assume all images are optimized unless proven otherwise
+    async def check_image_file_size_optimized(soup, results, url):
+        images=soup.find_all("img")[:10]  # its limit first 10 images
+        all_optimized=True  # Assume all images are optimized unless proven otherwise
+        broken_images=[]
 
-        for img in images:
-            img_url = urljoin(url, img.get("src"))  # Fix typo from `gate` to `get`
+        def is_data_uri(img_url):
+            #check if the url is  data image uri
+            return img_url.startswith("data:")
+        
+        async def fetch_images_size(session, image_url):
+            """Asynchronously fetch image size using HEAD request."""
             try:
-                response = requests.head(img_url, timeout=5)  # Fix inconsistent variable name
-                filesize = int(response.headers.get("Content-Length", 0)) / 1024  # Convert bytes to KB
-
-                if filesize > 150:
-                    results["results"]["content"]["image_file_size_optimized"] = {
-                        "value": "False",  # Fix typo "Flase" to "False"
-                        "status": "Needs Improvement",
-                        "rating": 5,
-                        "reason": f'Image {img_url} is too large ({filesize:.2f} KB)'
-                    }
-                    all_optimized = False  # Mark that at least one image is too large
-
+                async with session.head(image_url, timeout=ClientTimeout(total=5)) as response:
+                    if response.status==200:
+                        filesize=int(response.header.get("content-length",0)) / 1024 #convert bytes to kb
+                        if filesize>150:
+                            return f"{image_url} ({filesize:.2f} kB)"
+                        else:
+                            return f"{image_url} (HTTP{response.status})"
             except Exception as e:
-                results["results"]["content"]["image_file_size_optimized"] = {
-                    "value": "Error",
-                    "status": "Error",
-                    "rating": 1,  # Fix: Ensure rating is an integer
-                    "reason": f'Failed to check size of image {img_url}. Error: {str(e)}'
-                }
-                return  # Exit function if there's an error
+                return f" {image_url} (Error:{str(e)})"
+            
+        async with aiohttp.ClientSession() as session:
+            tasks = []
+            for img in images:
+                img_url = img.get("src", "")
+                if not img_url:  # Skip images without a src attribute
+                    continue
 
-        if all_optimized:  # If no large images were found
+                # Resolve relative URLs
+                img_url = urljoin(url, img_url)
+
+                # Skip data URIs
+                if is_data_uri(img_url):
+                    continue
+
+                # Create a task to fetch image size asynchronously
+                tasks.append(fetch_images_size(session, img_url))
+
+            # Execute all tasks concurrently
+            broken_images_results = await asyncio.gather(*tasks)
+
+            # Filter out None values (images that were skipped)
+            broken_images = [result for result in broken_images_results if result]
+
+        # Update results
+        if not broken_images:
             results["results"]["content"]["image_file_size_optimized"] = {
                 "value": "True",
                 "status": "Good",
                 "rating": 9,
-                "reasons": "All images are optimized"
+                "reason": "All images are optimized"
             }
+        else:
+            results["results"]["content"]["image_file_size_optimized"] = {
+                "value": "False",
+                "status": "Needs Improvement",
+                "rating": 5,
+                "reason": f"Images too large or broken: {', '.join(broken_images)}"
+            }
+
+
+
+
+    
+
+        # images = soup.find_all("img")
+        # all_optimized = True  # Assume all images are optimized unless proven otherwise
+
+        # for img in images:
+        #     img_url = urljoin(url, img.get("src"))  # Fix typo from `gate` to `get`
+        #     try:
+        #         response = requests.head(img_url, timeout=5)  # Fix inconsistent variable name
+        #         filesize = int(response.headers.get("Content-Length", 0)) / 1024  # Convert bytes to KB
+
+        #         if filesize > 150:
+        #             results["results"]["content"]["image_file_size_optimized"] = {
+        #                 "value": "False",  # Fix typo "Flase" to "False"
+        #                 "status": "Needs Improvement",
+        #                 "rating": 5,
+        #                 "reason": f'Image {img_url} is too large ({filesize:.2f} KB)'
+        #             }
+        #             all_optimized = False  # Mark that at least one image is too large
+
+        #     except Exception as e:
+        #         results["results"]["content"]["image_file_size_optimized"] = {
+        #             "value": "Error",
+        #             "status": "Error",
+        #             "rating": 1,  # Fix: Ensure rating is an integer
+        #             "reason": f'Failed to check size of image {img_url}. Error: {str(e)}'
+        #         }
+        #         return  # Exit function if there's an error
+
+        # if all_optimized:  # If no large images were found
+        #     results["results"]["content"]["image_file_size_optimized"] = {
+        #         "value": "True",
+        #         "status": "Good",
+        #         "rating": 9,
+        #         "reasons": "All images are optimized"
+        #     }
  
 
     @measure_execution_time
@@ -615,33 +682,40 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
     
 
     @measure_execution_time
-    def check_broken_external_links(soup, results, url):
+    async def check_broken_external_links(soup, results, url):
         external_links = [
             a.get("href") for a in soup.find_all("a", href=True)
             if a.get("href").startswith("http") and urlparse(a.get("href")).netloc != urlparse(url).netloc
         ]
         broken_links = []
 
-        def check_link(link):
+        async def check_link(session, link):
+            """Asynchronously check if a link is broken."""
+
             try:
-                response = requests.head(link, timeout=5)
-                if response.status_code >= 400:
-                    return f"{link} ({response.status_code})"
+                async with session.head(link, timeout=ClientTimeout(total=5)) as response:
+                # response = requests.head(link, timeout=5)
+                    if response.status_code >= 400:
+                        return f"{link} ({response.status_code})"
             except Exception as e:
                 return f"{link} (Error: {str(e)})"
             return None
+        
 
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            results_list = executor.map(check_link, external_links)
-            broken_links = [link for link in results_list if link]
+        async with aiohttp.ClientSession() as session:
+            tasks=[check_link(session, link) for link in external_links]
+            results_list=await asyncio.gather(*tasks)
+
+            #filter out non values (working links)
+            borken_links=[result for result in results_list if result]
 
         if broken_links:
-            results["results"]["links"]["broken_external_links"] = {
+            results['results']['links']['broken_external_links']={
                 "value": False,
-                "status": "Needs Improvement",
-                "rating": 1,
-                "reason": f"Broken external links found: {', '.join(broken_links)}"
-            }
+            "status": "Needs Improvement",
+            "rating": 1,
+            "reason": f"Broken external links found: {', '.join(broken_links)}"
+        }
         else:
             results["results"]["links"]["broken_external_links"] = {
                 "value": True,
@@ -651,17 +725,38 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
             }
 
 
+        # with ThreadPoolExecutor(max_workers=10) as executor:
+        #     results_list = executor.map(check_link, external_links)
+        #     broken_links = [link for link in results_list if link]
+
+        # if broken_links:
+        #     results["results"]["links"]["broken_external_links"] = {
+        #         "value": False,
+        #         "status": "Needs Improvement",
+        #         "rating": 1,
+        #         "reason": f"Broken external links found: {', '.join(broken_links)}"
+        #     }
+        # else:
+        #     results["results"]["links"]["broken_external_links"] = {
+        #         "value": True,
+        #         "status": "Good",
+        #         "rating": 9,
+        #         "reason": "No broken external links found"
+        #     }
+
+
     @measure_execution_time
-    def check_redirects_minimized(url, results):
+    async def check_redirects_minimized(url, results):
         try:
-            response = requests.get(url, allow_redirects=True, timeout=5)
-            redirect_count = len(response.history)
-            results["results"]["performance"]["redirects_minimized"] = {
-                "value": redirect_count <= 2, 
-                "status": "Good" if redirect_count <= 2 else "Needs Improvement", 
-                "rating": 10 if redirect_count <= 2 else 5, 
-                "reason": f"{redirect_count} redirects"
-                }
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, allow_redirects=True, timeout=ClientTimeout(total=3)) as response:
+                    redirect_count = len(response.history)
+                    results["results"]["performance"]["redirects_minimized"] = {
+                        "value": redirect_count <= 2, 
+                        "status": "Good" if redirect_count <= 2 else "Needs Improvement", 
+                        "rating": 10 if redirect_count <= 2 else 5, 
+                        "reason": f"{redirect_count} redirects"
+                        }
         except:
             results["results"]["performance"]["redirects_minimized"] = {
                 "value": "Error", "status": "Error", "rating": 1, "reason": "Failed to check redirects"}
@@ -682,53 +777,60 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
 
 
     
-    @measure_execution_time
-    def check_content_freshness(url, soup, results):
-        response = requests.head(url)
-        last_modified = response.headers.get("Last-Modified")
-        freshness_date = None
+    async def check_content_freshness(url, soup, results):
+            freshness_date = None   # stores the lates update date if found
 
-        if last_modified:
-            try:
-                freshness_date = parser.parse(last_modified)
-            except ValueError:
-                pass
-
-        # Check meta tags for published/modified dates
-        for meta in soup.find_all("meta"):
-            if meta.get("name") in ["article:published_time", "article:modified_time", "date"]:
+            async def fetch_last_modified():   
+                nonlocal freshness_date       # allows modified freshness date in this function
                 try:
-                    freshness_date = parser.parse(meta.get("content"))
-                    break
-                except ValueError:
+                    async with aiohttp.ClientSession() as session:  #open async http session
+                        async with session.head(url, timeout=ClientTimeout(total=5)) as response:   #sends request head
+                            last_modified = response.headers.get("Last-Modified")
+                            if last_modified:
+                                freshness_date = parser.parse(last_modified)
+                except Exception:
                     pass
 
-        # Extract dates from visible content
-        body_text = soup.get_text()
-        content_dates = re.findall(r"\b\d{4}-\d{2}-\d{2}\b", body_text)
-        if content_dates:
-            try:
-                freshness_date = parser.parse(content_dates[0])
-            except ValueError:
-                pass
+            async def check_meta_tags():
+                nonlocal freshness_date
+                relevant_meta_tags = soup.select('meta[name="article:published_time"], meta[name="article:modified_time"], meta[name="date"]')
+                for meta in relevant_meta_tags:
+                    try:
+                        freshness_date = parser.parse(meta.get("content"))
+                        break
+                    except ValueError:
+                        continue
 
-        # Decide freshness status
-        if freshness_date:
-            days_old = (datetime.utcnow().replace(tzinfo=freshness_date.tzinfo) - freshness_date).days
-            status = "Good" if days_old <= 30 else "Needs Improvement"
-            rating = 9 if days_old <= 30 else 5
-            reason = f"Last update {days_old} days ago"
-        else:
-            status = "Unknown"
-            rating = 0
-            reason = "Could not determine last update date"
+            async def check_content_dates():
+                nonlocal freshness_date
+                relevant_sections = soup.find_all(["h1", "h2", "h3", "p"])
+                body_text = " ".join(section.get_text() for section in relevant_sections)
+                content_dates = re.findall(r"\b\d{4}-\d{2}-\d{2}\b", body_text)
+                if content_dates:
+                    try:
+                        freshness_date = parser.parse(content_dates[0])
+                    except ValueError:
+                        pass
 
-        results["results"]["content"]["content_freshness"] = {
-            "value": freshness_date.strftime("%Y-%m-%d") if freshness_date else "Unknown",
-            "status": status,
-            "rating": rating,
-            "reason": reason
-        }
+            await asyncio.gather(fetch_last_modified(), check_meta_tags(), check_content_dates())
+
+            # Decide freshness status
+            if freshness_date:
+                days_old = (datetime.utcnow().replace(tzinfo=freshness_date.tzinfo) - freshness_date).days
+                status = "Good" if days_old <= 30 else "Needs Improvement"
+                rating = 9 if days_old <= 30 else 5
+                reason = f"Last update {days_old} days ago"
+            else:
+                status = "Info"
+                rating = 0
+                reason = "No date information available"
+
+            results["results"]["content"]["content_freshness"] = {
+                "value": freshness_date.strftime("%Y-%m-%d") if freshness_date else "Not Found",
+                "status": status,
+                "rating": rating,
+                "reason": reason
+            }
 
         
     @measure_execution_time
@@ -859,49 +961,52 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
             "reasons":"Social meta tags present" if has_social_tags else "Missing social meta tags"
         }
 
+    
     @measure_execution_time
-    def check_favicon_exists(soup, url, results):
-    # Check if favicon is declared in HTML
-        favicon_tag = soup.find("link", rel=lambda r: r and "icon" in r.lower())
-        favicon_url = urljoin(url, favicon_tag["href"]) if favicon_tag and "href" in favicon_tag.attrs else None
-
-        if favicon_url:
-            # Perform a quick HTTP HEAD request only if a favicon link is found
+    async def check_favicon_exists(soup, url, results):
+        # Helper function to check favicon existence asynchronously
+        async def fetch_favicon(session, favicon_url):
             try:
-                response = requests.head(favicon_url, timeout=5)
-                if response.status_code == 200:
-                    results["results"]["meta_tags"]["favicon_exists"] = {
-                        "value": favicon_url,
-                        "status": "Good",
-                        "rating": 10,
-                        "reason": f"Favicon found and accessible"
-                    }
-                    return  # Stop checking further
-            except requests.exceptions.RequestException:
-                pass  # Ignore request errors
+                async with session.head(favicon_url, timeout=ClientTimeout(total=2)) as response:
+                    if response.status == 200:
+                        return favicon_url
+            except Exception:
+                pass
+            return None
+
+        # Check if favicon is declared in HTML
+        favicon_tag = soup.find("link", rel=lambda r: r and "icon" in r.lower())
+        declared_favicon_url = urljoin(url, favicon_tag["href"]) if favicon_tag and "href" in favicon_tag.attrs else None
 
         # Fallback: Check /favicon.ico in root directory
         root_favicon_url = urljoin(url, "/favicon.ico")
-        try:
-            response = requests.head(root_favicon_url, timeout=5)
-            if response.status_code == 200:
-                results["results"]["meta_tags"]["favicon_exists"] = {
-                    "value": True,
-                    "status": "Good",
-                    "rating": 10,
-                    "reason": "Root favicon found and accessible"
-                }
-                return
-        except requests.exceptions.RequestException:
-            pass
 
-        # If favicon is missing
-        results["results"]["meta_tags"]["favicon_exists"] = {
-            "value": False,
-            "status": "Poor",
-            "rating": 5,
-            "reason": "Favicon not found"
-        }
+        # Perform concurrent checks for both declared favicon and fallback
+        async with aiohttp.ClientSession() as session:
+            tasks = []
+            if declared_favicon_url:
+                tasks.append(fetch_favicon(session, declared_favicon_url))
+            tasks.append(fetch_favicon(session, root_favicon_url))
+
+            # Gather results from all tasks
+            results_list = await asyncio.gather(*tasks)
+
+        # Determine the final result
+        favicon_found = next((url for url in results_list if url), None)
+        if favicon_found:
+            results["results"]["meta_tags"]["favicon_exists"] = {
+                "value": favicon_found,
+                "status": "Good",
+                "rating": 10,
+                "reason": f"Favicon found and accessible"
+            }
+        else:
+            results["results"]["meta_tags"]["favicon_exists"] = {
+                "value": False,
+                "status": "Poor",
+                "rating": 5,
+                "reason": "Favicon not found"
+            }
 
 
     @measure_execution_time
@@ -1166,7 +1271,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         (check_meta_tags, (soup, results)),
         (check_headings, (soup, results)),
         (check_content, (soup, results)),
-        (check_technical, (soup, results)),
+        (check_technical, (soup, results, url)),
         (check_performance, (soup, results, response if 'response' in locals() else None)),
         (check_security, (soup, results)),
         (check_mobile, (soup, results)),
