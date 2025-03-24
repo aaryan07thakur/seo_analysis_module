@@ -17,13 +17,13 @@ class AnalysisResponse(BaseModel):
     status: str
     result: Optional[Dict] = None  # Default value is None
 
-@app.post("/start-analysis/", response_model=AnalysisResponse)
+@app.post("/start-analysis/", response_model=AnalysisResponse)     #user send websute url request
 def start_analysis(request: AnalysisRequest):
     # Generate a unique scan ID
-    scan_id = str(uuid.uuid4())
+    scan_id = str(uuid.uuid4())      #scan id is genereated for tracking analysis
 
     # Create a new scan object
-    scan = {
+    scan = {      #information is saved in mongodb with status pending
         "_id": scan_id,
         "url": request.url,
         "status": "pending",
@@ -38,7 +38,7 @@ def start_analysis(request: AnalysisRequest):
 
 
     # Trigger Celery task
-    perform_seo_analysis.delay(scan_id, request.url)
+    perform_seo_analysis.delay(scan_id, request.url)   #background taks to analyze website using celery
 
     # Return the response with the correct fields
     return AnalysisResponse(
@@ -47,9 +47,9 @@ def start_analysis(request: AnalysisRequest):
         result=scan["result"]  # Explicitly set `result` to `None`
     )
 
-@app.get("/get-analysis/{scan_id}", response_model=AnalysisResponse)
+@app.get("/get-analysis/{scan_id}", response_model=AnalysisResponse)   #user send request to get result with scan id
 def get_analysis(scan_id: str):
-    logger.info(f"Fetching scan details for scan ID: {scan_id}")
+    logger.info(f"Fetching scan details for scan ID: {scan_id}")     #logs a message when the system tries to fetch SEO scan details from the database.
     scan = seo_analysis_collection.find_one({"_id": scan_id})
     if not scan:
         logger.warning(f"Scan with ID {scan_id} not found")

@@ -10,7 +10,7 @@ celery_app = Celery("tasks", broker="redis://localhost:6379/0")
 celery_app.conf.broker_connection_retry_on_startup = True
 celery_app.conf.worker_pool = "solo"  # Set worker pool to solo for easier debugging
 
-@celery_app.task
+@celery_app.task              #perform_seo_analysis as background task as a celery task
 def perform_seo_analysis(scan_id: str, url: str):
     try:
         logger.info(f"Received SEO analysis request for URL: {url} with scan_id {scan_id}")
@@ -22,7 +22,7 @@ def perform_seo_analysis(scan_id: str, url: str):
             return
 
         # Update status to "in_progress"
-        seo_analysis_collection.update_one({"_id": scan_id}, {"$set": {"status": "in_progress"}})
+        seo_analysis_collection.update_one({"_id": scan_id}, {"$set": {"status": "in_progress"}})      #Updates the status to "in_progress" in the database.
         logger.info(f"Updated status to 'in_progress' for scan ID {scan_id}")
 
         # Perform SEO analysis
@@ -30,7 +30,7 @@ def perform_seo_analysis(scan_id: str, url: str):
             logger.info(f"Fetching page content for URL: {url}")
             response = requests.get(url, timeout=10)       #Sends an HTTP request to fetch the webpage content
             response.raise_for_status()  # Raise HTTPError for bad responses
-            soup = BeautifulSoup(response.content, "lxml")
+            soup = BeautifulSoup(response.content, "lxml")      #Parses the HTML content using BeautifulSoup. "lxml" is a fast and efficient parser for HTML and XML documents.
 
             results = evaluate_seo_rules(soup, url)      #Calls the evaluate_seo_rules() function to analyze the page based on SEO rules.
             logger.info(f"SEO analysis completed for scan ID {scan_id}. Results: {results}")    #stores the Results in results
