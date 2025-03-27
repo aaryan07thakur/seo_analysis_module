@@ -7,8 +7,8 @@ from itertools import islice
 from collections import defaultdict
 from datetime import datetime
 from collections import Counter #for keyword density
-from readability.readability import Document
-from lxml import html
+# from readability.readability import Document
+# from lxml import html
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
@@ -43,6 +43,39 @@ def measure_execution_time(func):
         return result
 
     return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
+
+
+
+#  function to filter with rating < 5
+
+def filter_issues(reuslts):
+
+    issues=[]
+
+    #recursive function to traverse nested dictionaries
+    def traverse(d):
+        if isinstance(d, dict):
+            for key, value in d.items():
+                if isinstance (value,dict):
+                    #check if the current dictionary has a "rating" key 
+                    if "rating" in value and value["rating"]<5:
+                        issues.append({
+                            "key": key,
+                            "value":value.get("value"),
+                            "status": value.get("status"),
+                            "rating": value.get("rating"),
+                            "reason": value.get("ratings"),
+                        })
+                        #Recurse into neted dictionary
+                    traverse(value)
+    #start traversing from the root of the results
+    traverse(reuslts)
+
+    return{
+        "count": len(issues),
+        "issues": issues,
+    }
+
 
 
 
@@ -298,35 +331,6 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
                 "rating": 1,
                 "reason": "Failed to check robots.txt"
             }
-
-    # Performance
-    # @measure_execution_time
-    # async def check_performance(soup, results, response=None):
-    #     if response:
-    #         await asyncio.gather(
-    #             # check_page_load_time(response, results),
-    #             # check_gzip_compression_enabled(response, results),
-    #             # check_browser_caching_enabled(response, results)
-    #         )
-    #     else:
-    #         results["results"]["performance"]["page_load_time"] = {
-    #             "value": None,
-    #             "status": "Error",
-    #             "rating": 1,
-    #             "reason": "Failed to measure load time, no response object"
-    #         }
-    #         results["results"]["performance"]["gzip_compression_enabled"] = {
-    #             "value": None,
-    #             "status": "Error",
-    #             "rating": 1,
-    #             "reason": "Failed to check gzip, no response object"
-    #         }
-    #         results["results"]["performance"]["browser_caching_enabled"] = {
-    #             "value": None,
-    #             "status": "Error",
-    #             "rating": 1,
-    #             "reason": "Failed to check caching, no response object"
-    #         }
 
     # Security
     @measure_execution_time
@@ -824,7 +828,7 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
 
 
     @measure_execution_time
-    async def check_page_depth(url,results):
+    async def check_page_depth(url,results):  
         try:
             prased_url=urlparse(url)
             base_url=f"{prased_url.scheme}://{prased_url.netloc}"
@@ -1119,36 +1123,76 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
         Checks the page load time based on the response object.
         Updates the 'results' dictionary with the load time and status.
         """
+
         try:
-            # Validate the response object
-            if not response or not hasattr(response, "elapsed"):
-                results["results"]["performance"]["page_load_time"] = {
-                    "value": None,
-                    "status": "Error",
-                    "rating": 1,
-                    "reason": "Failed to measure load time: Invalid or missing response object"
-                }
-                return
+            response= requests.get(url)
+            load_time=round(response.elapsed.total_seconds(),2)
 
-            # Calculate load time
-            load_time = round(response.elapsed.total_seconds(), 2)
+            if response.elapsed is None:
+                print("response.elapsed is none (page load time couldnot be measuerd)")
+            else:
+                print(f"page_load_time: {response.elapsed.total_seconds()} seconds" )
 
-            # Update results based on load time
-            results["results"]["performance"]["page_load_time"] = {
-                "value": load_time,
-                "status": "Good" if load_time <= 3 else "Needs Improvement",
-                "rating": 10 if load_time <= 3 else 5,
-                "reason": f"Page load time: {load_time} seconds"
+            if load_time <3 :
+                status, rating="Good",10,
+            elif load_time>=3 <=10:
+                status, rating="Needs to improvement",5
+            else:
+                status, rating="Poor",1
+
+            results["results"]["performance"]["page_load_time"]={
+                "value":load_time,
+                "status":status,
+                "rating":rating,
+                "resions":f"page_load_time: {load_time} seconds"
             }
-
         except Exception as e:
-            # Log any unexpected errors
-            results["results"]["performance"]["page_load_time"] = {
-                "value": None,
-                "status": "Error",
-                "rating": 1,
-                "reason": f"Failed to measure load time: {str(e)}"
+            results["results"]["performance"]["page_load_time"]={
+                "value":None,
+                "status":"Error",
+                "rating":1,
+                "resion":f"failed to measuer load time: {str(e)} "
+
             }
+            
+# ============================================================================================= 
+    # def check_page_load_time(response, results):
+    #     """
+    #     Checks the page load time based on the response object.
+    #     Updates the 'results' dictionary with the load time and status.
+    #     """
+    #     try:
+    #         # Validate the response object
+    #         if not response or not hasattr(response, "elapsed"):
+    #             results["results"]["performance"]["page_load_time"] = {
+    #                 "value": None,
+    #                 "status": "Error",
+    #                 "rating": 1,
+    #                 "reason": "Failed to measure load time: Invalid or missing response object"
+    #             }
+    #             return
+
+    #         # Calculate load time
+    #         load_time = round(response.elapsed.total_seconds(), 2)
+
+    #         # Update results based on load time
+    #         results["results"]["performance"]["page_load_time"] = {
+    #             "value": load_time,
+    #             "status": "Good" if load_time <= 3 else "Needs Improvement",
+    #             "rating": 10 if load_time <= 3 else 5,
+    #             "reason": f"Page load time: {load_time} seconds"
+    #         }
+
+    #     except Exception as e:
+    #         # Log any unexpected errors
+    #         results["results"]["performance"]["page_load_time"] = {
+    #             "value": None,
+    #             "status": "Error",
+    #             "rating": 1,
+    #             "reason": f"Failed to measure load time: {str(e)}"
+    #         }
+
+    # ==========================================================================================
 
     @measure_execution_time
     def check_duplicate_content(soup, results):
@@ -1332,6 +1376,10 @@ def evaluate_seo_rules(soup, url, target_keyword=None):
             if rule["rating"] > 0:
                 total += rule["rating"]
                 count += 1
+
+
+    results["Issues"] = filter_issues(results)
     results["seo_rating"] = round(total / count, 2) if count else 0
+    
 
     return dict(results)
