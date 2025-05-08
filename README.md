@@ -55,13 +55,13 @@ sudo service redis-server start
 ### Start Celery Worker
 
 ```bash
-celery -A app.celery_worker worker --loglevel=info
+celery -A celery_worker worker --loglevel=info
 ```
 
 ### Start FastAPI Application
 
 ```bash
-uvicorn app.main:app --reload
+uvicorn main:app --reload
 ```
 
 The API will be available at `http://localhost:8000`.

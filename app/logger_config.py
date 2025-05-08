@@ -10,5 +10,6 @@ logging.basicConfig(
     ]
 )
 
+
 # Initialize logger
 logger = logging.getLogger(__name__)

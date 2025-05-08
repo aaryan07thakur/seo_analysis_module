@@ -6,5 +6,9 @@ class AnalysisRequest(BaseModel):
 
 class AnalysisResponse(BaseModel):
     id: str  # Ensure this matches the type of `_id` in MongoDB
+    url:str
     status: str
     result: Optional[Dict] = None  # Allow `None` for the result field
+
+
+

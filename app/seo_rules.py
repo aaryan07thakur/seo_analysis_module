@@ -1301,7 +1301,7 @@ def check_keyword_in_h1(soup, results, target_keyword):
     if not target_keyword:
         content_section["keyword_in_h1"] = {
             "value": None,
-            "status": "Not Checked",
+            "status": "No keyword in h1",
             "rating": 5,
             "reason": "No target keyword provided",
              "category":"High Priority",

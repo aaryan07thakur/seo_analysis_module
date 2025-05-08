@@ -1,0 +1,230 @@
+2025-05-08 20:24:58,697 - app.logger_config - INFO - Received request to start SEO analysis for URL: https://www.instagram.com/
+2025-05-08 20:24:58,697 - app.logger_config - INFO - Validating URL: https://www.instagram.com/
+2025-05-08 20:24:58,698 - app.logger_config - INFO - Starting validate_and_get_base_url function
+2025-05-08 20:24:58,698 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.instagram.com', path='/', params='', query='', fragment='')
+2025-05-08 20:24:58,699 - app.logger_config - INFO - Extracted base URL: https://www.instagram.com
+2025-05-08 20:24:58,700 - app.logger_config - INFO - Checking reachability of base URL: https://www.instagram.com
+2025-05-08 20:24:58,700 - app.logger_config - INFO - Starting check_base_url_reachability
+2025-05-08 20:24:58,701 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.instagram.com', path='', params='', query='', fragment='')
+2025-05-08 20:24:59,879 - app.logger_config - INFO - Scan object inserted with ID: cccae56b-bcd1-452e-9a75-d279ee5d80bb
+2025-05-08 20:25:55,902 - app.logger_config - INFO - Fetching SEO analysis for scan ID: cccae56b-bcd1-452e-9a75-d279ee5d80bb
+2025-05-08 20:25:55,905 - app.logger_config - INFO - Fetching SEO analysis data for scan ID: cccae56b-bcd1-452e-9a75-d279ee5d80bb
+2025-05-08 20:33:39,289 - app.logger_config - INFO - Received request to start SEO analysis for URL: https://www.apple.com/
+2025-05-08 20:33:39,290 - app.logger_config - INFO - Validating URL: https://www.apple.com/
+2025-05-08 20:33:39,290 - app.logger_config - INFO - Starting validate_and_get_base_url function
+2025-05-08 20:33:39,291 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.apple.com', path='/', params='', query='', fragment='')
+2025-05-08 20:33:39,291 - app.logger_config - INFO - Extracted base URL: https://www.apple.com
+2025-05-08 20:33:39,292 - app.logger_config - INFO - Checking reachability of base URL: https://www.apple.com
+2025-05-08 20:33:39,292 - app.logger_config - INFO - Starting check_base_url_reachability
+2025-05-08 20:33:39,292 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.apple.com', path='', params='', query='', fragment='')
+2025-05-08 20:33:40,060 - app.logger_config - INFO - Scan object inserted with ID: 7dbf9ee5-6d5d-4472-8aea-0588a91865b2
+2025-05-08 20:33:40,313 - app.logger_config - WARNING - Invalid URL format for URL: https://www.apple.com/. Error: 1 validation error for AnalysisResponse
+id
+  Field required [type=missing, input_value={'_id': '7dbf9ee5-6d5d-44...ending', 'result': None}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.4/v/missing
+2025-05-08 20:39:12,647 - app.logger_config - INFO - Received request to start SEO analysis for URL: https://www.apple.com/
+2025-05-08 20:39:12,648 - app.logger_config - INFO - Validating URL: https://www.apple.com/
+2025-05-08 20:39:12,649 - app.logger_config - INFO - Starting validate_and_get_base_url function
+2025-05-08 20:39:12,650 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.apple.com', path='/', params='', query='', fragment='')
+2025-05-08 20:39:12,651 - app.logger_config - INFO - Extracted base URL: https://www.apple.com
+2025-05-08 20:39:12,651 - app.logger_config - INFO - Checking reachability of base URL: https://www.apple.com
+2025-05-08 20:39:12,652 - app.logger_config - INFO - Starting check_base_url_reachability
+2025-05-08 20:39:12,652 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.apple.com', path='', params='', query='', fragment='')
+2025-05-08 20:39:13,593 - app.logger_config - INFO - Scan object inserted with ID: 878b14ce-3340-40c6-bce4-99e2446df654
+2025-05-08 20:39:30,761 - app.logger_config - INFO - Fetching SEO analysis for scan ID: 878b14ce-3340-40c6-bce4-99e2446df654
+2025-05-08 20:39:30,762 - app.logger_config - INFO - Fetching SEO analysis data for scan ID: 878b14ce-3340-40c6-bce4-99e2446df654
+2025-05-08 20:57:47,578 - app.logger_config - INFO - Received request to start SEO analysis for URL: https://www.instagkjdjfdlkram.com/
+2025-05-08 20:57:47,580 - app.logger_config - INFO - Validating URL: https://www.instagkjdjfdlkram.com/
+2025-05-08 20:57:47,580 - app.logger_config - INFO - Starting validate_and_get_base_url function
+2025-05-08 20:57:47,581 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.instagkjdjfdlkram.com', path='/', params='', query='', fragment='')
+2025-05-08 20:57:47,582 - app.logger_config - INFO - Extracted base URL: https://www.instagkjdjfdlkram.com
+2025-05-08 20:57:47,583 - app.logger_config - INFO - Checking reachability of base URL: https://www.instagkjdjfdlkram.com
+2025-05-08 20:57:47,583 - app.logger_config - INFO - Starting check_base_url_reachability
+2025-05-08 20:57:47,584 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.instagkjdjfdlkram.com', path='', params='', query='', fragment='')
+2025-05-08 20:57:48,646 - app.logger_config - WARNING - Base URL unreachable: Failed to reach base URL: HTTPSConnectionPool(host='www.instagkjdjfdlkram.com', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001E9268F1E80>: Failed to resolve 'www.instagkjdjfdlkram.com' ([Errno 11001] getaddrinfo failed)"))
+2025-05-08 21:44:30,311 - app.logger_config - INFO - Received request to start SEO analysis for URL: https://www.daraz.com.np/#?
+2025-05-08 21:44:30,312 - app.logger_config - INFO - Validating URL: https://www.daraz.com.np/#?
+2025-05-08 21:44:30,313 - app.logger_config - INFO - Starting validate_and_get_base_url function
+2025-05-08 21:44:30,314 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.daraz.com.np', path='/', params='', query='', fragment='?')
+2025-05-08 21:44:30,316 - app.logger_config - INFO - Extracted base URL: https://www.daraz.com.np
+2025-05-08 21:44:30,316 - app.logger_config - INFO - Checking reachability of base URL: https://www.daraz.com.np
+2025-05-08 21:44:30,317 - app.logger_config - INFO - Starting check_base_url_reachability
+2025-05-08 21:44:30,319 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.daraz.com.np', path='', params='', query='', fragment='')
+2025-05-08 21:44:32,213 - app.logger_config - INFO - Scan object inserted with ID: edf84aeb-1bf3-46a1-bbac-2db066b9ea5d
+2025-05-08 21:44:47,324 - app.logger_config - INFO - Fetching SEO analysis for scan ID: edf84aeb-1bf3-46a1-bbac-2db066b9ea5d
+2025-05-08 21:44:47,373 - app.logger_config - INFO - Fetching SEO analysis data for scan ID: edf84aeb-1bf3-46a1-bbac-2db066b9ea5d
+2025-05-08 21:44:54,869 - app.logger_config - INFO - Fetching SEO analysis for scan ID: edf84aeb-1bf3-46a1-bbac-2db066b9ea5d
+2025-05-08 21:44:54,870 - app.logger_config - INFO - Fetching SEO analysis data for scan ID: edf84aeb-1bf3-46a1-bbac-2db066b9ea5d
+2025-05-08 21:55:42,471 - app.logger_config - INFO - Received request to start SEO analysis for URL: https://www.instagkjdlksram.com/
+2025-05-08 21:55:42,472 - app.logger_config - INFO - Validating URL: https://www.instagkjdlksram.com/
+2025-05-08 21:55:42,472 - app.logger_config - INFO - Starting validate_and_get_base_url function
+2025-05-08 21:55:42,473 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.instagkjdlksram.com', path='/', params='', query='', fragment='')
+2025-05-08 21:55:42,475 - app.logger_config - INFO - Extracted base URL: https://www.instagkjdlksram.com
+2025-05-08 21:55:42,476 - app.logger_config - INFO - Checking reachability of base URL: https://www.instagkjdlksram.com
+2025-05-08 21:55:42,478 - app.logger_config - INFO - Starting check_base_url_reachability
+2025-05-08 21:55:42,480 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.instagkjdlksram.com', path='', params='', query='', fragment='')
+2025-05-08 21:55:43,355 - app.logger_config - WARNING - Base URL unreachable: Failed to reach base URL: HTTPSConnectionPool(host='www.instagkjdlksram.com', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000025B81627170>: Failed to resolve 'www.instagkjdlksram.com' ([Errno 11001] getaddrinfo failed)"))
+2025-05-08 21:55:43,356 - app.logger_config - ERROR - Error starting analysis for URL: https://www.instagkjdlksram.com/. Error: '_id'
+Traceback (most recent call last):
+  File "C:\Users\DELL\OneDrive\Desktop\seo_analysis\app\routers.py", line 18, in start_analysis
+    scan["id"] = scan.pop("_id")  # Fix FastAPI validation issue
+                 ^^^^^^^^^^^^^^^
+KeyError: '_id'
+2025-05-08 21:57:16,386 - app.logger_config - INFO - Received request to start SEO analysis for URL: https://www.instagkjdlksram.com/
+2025-05-08 21:57:16,387 - app.logger_config - INFO - Validating URL: https://www.instagkjdlksram.com/
+2025-05-08 21:57:16,388 - app.logger_config - INFO - Starting validate_and_get_base_url function
+2025-05-08 21:57:16,389 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.instagkjdlksram.com', path='/', params='', query='', fragment='')
+2025-05-08 21:57:16,390 - app.logger_config - INFO - Extracted base URL: https://www.instagkjdlksram.com
+2025-05-08 21:57:16,390 - app.logger_config - INFO - Checking reachability of base URL: https://www.instagkjdlksram.com
+2025-05-08 21:57:16,391 - app.logger_config - INFO - Starting check_base_url_reachability
+2025-05-08 21:57:16,394 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.instagkjdlksram.com', path='', params='', query='', fragment='')
+2025-05-08 21:57:16,411 - app.logger_config - WARNING - Base URL unreachable: Failed to reach base URL: HTTPSConnectionPool(host='www.instagkjdlksram.com', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000002D548ADADE0>: Failed to resolve 'www.instagkjdlksram.com' ([Errno 11001] getaddrinfo failed)"))
+2025-05-08 22:01:46,060 - app.logger_config - INFO - Received request to start SEO analysis for URL: https://merolagani.com/LatestMarket.aspx
+2025-05-08 22:01:46,060 - app.logger_config - INFO - Validating URL: https://merolagani.com/LatestMarket.aspx
+2025-05-08 22:01:46,061 - app.logger_config - INFO - Starting validate_and_get_base_url function
+2025-05-08 22:01:46,061 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='merolagani.com', path='/LatestMarket.aspx', params='', query='', fragment='')
+2025-05-08 22:01:46,064 - app.logger_config - INFO - Extracted base URL: https://merolagani.com
+2025-05-08 22:01:46,064 - app.logger_config - INFO - Checking reachability of base URL: https://merolagani.com
+2025-05-08 22:01:46,065 - app.logger_config - INFO - Starting check_base_url_reachability
+2025-05-08 22:01:46,065 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='merolagani.com', path='', params='', query='', fragment='')
+2025-05-08 22:01:46,884 - app.logger_config - INFO - Scan object inserted with ID: 9f93ac03-7104-4ad7-b8d4-172de1e9d79c
+2025-05-08 22:02:00,816 - app.logger_config - INFO - Fetching SEO analysis for scan ID: 9f93ac03-7104-4ad7-b8d4-172de1e9d79c
+2025-05-08 22:02:00,817 - app.logger_config - INFO - Fetching SEO analysis data for scan ID: 9f93ac03-7104-4ad7-b8d4-172de1e9d79c
+2025-05-08 22:02:05,533 - app.logger_config - INFO - Fetching SEO analysis for scan ID: 9f93ac03-7104-4ad7-b8d4-172de1e9d79c
+2025-05-08 22:02:05,533 - app.logger_config - INFO - Fetching SEO analysis data for scan ID: 9f93ac03-7104-4ad7-b8d4-172de1e9d79c
+2025-05-08 22:02:18,103 - app.logger_config - INFO - Fetching SEO analysis for scan ID: 9f93ac03-7104-4ad7-b8d4-172de1e9d79c
+2025-05-08 22:02:18,103 - app.logger_config - INFO - Fetching SEO analysis data for scan ID: 9f93ac03-7104-4ad7-b8d4-172de1e9d79c
+2025-05-08 22:39:03,437 - app.logger_config - INFO - Received request to start SEO analysis for URL: https://wiki.python.org/moin/BeginnersGuide
+2025-05-08 22:39:03,437 - app.logger_config - INFO - Validating URL: https://wiki.python.org/moin/BeginnersGuide
+2025-05-08 22:39:03,438 - app.logger_config - INFO - Starting validate_and_get_base_url function
+2025-05-08 22:39:03,439 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='wiki.python.org', path='/moin/BeginnersGuide', params='', query='', fragment='')
+2025-05-08 22:39:03,440 - app.logger_config - INFO - Extracted base URL: https://wiki.python.org
+2025-05-08 22:39:03,441 - app.logger_config - INFO - Checking reachability of base URL: https://wiki.python.org
+2025-05-08 22:39:03,441 - app.logger_config - INFO - Starting check_base_url_reachability
+2025-05-08 22:39:03,442 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='wiki.python.org', path='', params='', query='', fragment='')
+2025-05-08 22:39:09,998 - app.logger_config - INFO - Scan object inserted with ID: {'_id': 'b2eb982e-3310-4d42-929e-a5736fd09ccf', 'url': 'https://wiki.python.org', 'status': 'pending', 'result': None}
+2025-05-08 22:39:26,180 - app.logger_config - INFO - Fetching SEO analysis for scan ID: b2eb982e-3310-4d42-929e-a5736fd09ccf
+2025-05-08 22:39:26,181 - app.logger_config - INFO - Fetching SEO analysis data for scan ID: b2eb982e-3310-4d42-929e-a5736fd09ccf
+2025-05-08 22:40:22,951 - app.logger_config - INFO - Fetching SEO analysis for scan ID: b2eb982e-3310-4d42-929e-a5736fd09ccf
+2025-05-08 22:40:22,952 - app.logger_config - INFO - Fetching SEO analysis data for scan ID: b2eb982e-3310-4d42-929e-a5736fd09ccf
+2025-05-08 22:50:14,312 - app.logger_config - INFO - Received request to start SEO analysis for URL: https://www.overleaf.com/project/65f1546638cab942771694da
+2025-05-08 22:50:14,319 - app.logger_config - INFO - Validating URL: https://www.overleaf.com/project/65f1546638cab942771694da
+2025-05-08 22:50:14,325 - app.logger_config - INFO - Starting validate_and_get_base_url function
+2025-05-08 22:50:14,328 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.overleaf.com', path='/project/65f1546638cab942771694da', params='', query='', fragment='')
+2025-05-08 22:50:14,330 - app.logger_config - INFO - Extracted base URL: https://www.overleaf.com
+2025-05-08 22:50:14,334 - app.logger_config - INFO - Checking reachability of base URL: https://www.overleaf.com
+2025-05-08 22:50:14,336 - app.logger_config - INFO - Starting check_base_url_reachability
+2025-05-08 22:50:14,337 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.overleaf.com', path='', params='', query='', fragment='')
+2025-05-08 22:50:15,475 - app.logger_config - INFO - Scan object inserted with ID: {'_id': '635afc73-08d6-4771-bba1-5edc7f28bed0', 'url': 'https://www.overleaf.com', 'status': 'pending', 'result': None}
+2025-05-08 22:50:29,273 - app.logger_config - INFO - Fetching SEO analysis for scan ID: 635afc73-08d6-4771-bba1-5edc7f28bed0
+2025-05-08 22:50:29,274 - app.logger_config - INFO - Fetching SEO analysis data for scan ID: 635afc73-08d6-4771-bba1-5edc7f28bed0
+2025-05-08 22:51:34,929 - app.logger_config - INFO - Received request to start SEO analysis for URL: https://www.w3schools.com/html/html_attributes.asp
+2025-05-08 22:51:34,930 - app.logger_config - INFO - Validating URL: https://www.w3schools.com/html/html_attributes.asp
+2025-05-08 22:51:34,930 - app.logger_config - INFO - Starting validate_and_get_base_url function
+2025-05-08 22:51:34,931 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.w3schools.com', path='/html/html_attributes.asp', params='', query='', fragment='')
+2025-05-08 22:51:34,932 - app.logger_config - INFO - Extracted base URL: https://www.w3schools.com
+2025-05-08 22:51:34,933 - app.logger_config - INFO - Checking reachability of base URL: https://www.w3schools.com
+2025-05-08 22:51:34,934 - app.logger_config - INFO - Starting check_base_url_reachability
+2025-05-08 22:51:34,935 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.w3schools.com', path='', params='', query='', fragment='')
+2025-05-08 22:51:36,126 - app.logger_config - INFO - Scan object inserted with ID: {'_id': '6cf7eb3b-0eaa-411b-aaef-20a72bd6d399', 'url': 'https://www.w3schools.com', 'status': 'pending', 'result': None}
+2025-05-08 22:51:46,538 - app.logger_config - INFO - Fetching SEO analysis for scan ID: 6cf7eb3b-0eaa-411b-aaef-20a72bd6d399
+2025-05-08 22:51:46,541 - app.logger_config - INFO - Fetching SEO analysis data for scan ID: 6cf7eb3b-0eaa-411b-aaef-20a72bd6d399
+2025-05-08 23:02:16,416 - app.logger_config - INFO - Received request to start SEO analysis for URL: https://wiki.python.org/moin/BeginnersGuide
+2025-05-08 23:02:16,417 - app.logger_config - INFO - Validating URL: https://wiki.python.org/moin/BeginnersGuide
+2025-05-08 23:02:16,417 - app.logger_config - INFO - Starting validate_and_get_base_url function
+2025-05-08 23:02:16,418 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='wiki.python.org', path='/moin/BeginnersGuide', params='', query='', fragment='')
+2025-05-08 23:02:16,419 - app.logger_config - INFO - Extracted base URL: https://wiki.python.org
+2025-05-08 23:02:16,420 - app.logger_config - INFO - Checking reachability of base URL: https://wiki.python.org
+2025-05-08 23:02:16,421 - app.logger_config - INFO - Starting check_base_url_reachability
+2025-05-08 23:02:16,421 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='wiki.python.org', path='', params='', query='', fragment='')
+2025-05-08 23:02:23,154 - app.logger_config - INFO - Scan object inserted with ID: {'_id': '50a2e1d7-204b-4130-aa5e-efacbcf1dfaf', 'url': 'https://wiki.python.org', 'status': 'pending', 'result': None}
+2025-05-08 23:02:38,440 - app.logger_config - INFO - Fetching SEO analysis for scan ID: 50a2e1d7-204b-4130-aa5e-efacbcf1dfaf
+2025-05-08 23:02:38,442 - app.logger_config - INFO - Fetching SEO analysis data for scan ID: 50a2e1d7-204b-4130-aa5e-efacbcf1dfaf
+2025-05-08 23:02:45,753 - app.logger_config - INFO - Fetching SEO analysis for scan ID: 50a2e1d7-204b-4130-aa5e-efacbcf1dfaf
+2025-05-08 23:02:45,756 - app.logger_config - INFO - Fetching SEO analysis data for scan ID: 50a2e1d7-204b-4130-aa5e-efacbcf1dfaf
+2025-05-08 23:03:01,571 - app.logger_config - INFO - Fetching SEO analysis for scan ID: 50a2e1d7-204b-4130-aa5e-efacbcf1dfaf
+2025-05-08 23:03:01,571 - app.logger_config - INFO - Fetching SEO analysis data for scan ID: 50a2e1d7-204b-4130-aa5e-efacbcf1dfaf
+2025-05-08 23:03:21,588 - app.logger_config - INFO - Fetching SEO analysis for scan ID: 50a2e1d7-204b-4130-aa5e-efacbcf1dfaf
+2025-05-08 23:03:21,588 - app.logger_config - INFO - Fetching SEO analysis data for scan ID: 50a2e1d7-204b-4130-aa5e-efacbcf1dfaf
+2025-05-08 23:04:42,790 - app.logger_config - INFO - Received request to start SEO analysis for URL: https://www.w3schlklklksjkdools.com/html/html_attributes.asp
+2025-05-08 23:04:42,791 - app.logger_config - INFO - Validating URL: https://www.w3schlklklksjkdools.com/html/html_attributes.asp
+2025-05-08 23:04:42,792 - app.logger_config - INFO - Starting validate_and_get_base_url function
+2025-05-08 23:04:42,793 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.w3schlklklksjkdools.com', path='/html/html_attributes.asp', params='', query='', fragment='')
+2025-05-08 23:04:42,796 - app.logger_config - INFO - Extracted base URL: https://www.w3schlklklksjkdools.com
+2025-05-08 23:04:42,797 - app.logger_config - INFO - Checking reachability of base URL: https://www.w3schlklklksjkdools.com
+2025-05-08 23:04:42,798 - app.logger_config - INFO - Starting check_base_url_reachability
+2025-05-08 23:04:42,799 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.w3schlklklksjkdools.com', path='', params='', query='', fragment='')
+2025-05-08 23:04:42,957 - app.logger_config - WARNING - Base URL unreachable: Failed to reach base URL: HTTPSConnectionPool(host='www.w3schlklklksjkdools.com', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x00000158D8AB71A0>: Failed to resolve 'www.w3schlklklksjkdools.com' ([Errno 11001] getaddrinfo failed)"))
+2025-05-08 23:20:53,298 - app.logger_config - INFO - Received request to start SEO analysis for URL: https://www.w3schlklklksjkdools.com/html/html_attributes.asp
+2025-05-08 23:20:53,299 - app.logger_config - INFO - Validating URL: https://www.w3schlklklksjkdools.com/html/html_attributes.asp
+2025-05-08 23:20:53,300 - app.logger_config - INFO - Starting validate_and_get_base_url function
+2025-05-08 23:20:53,301 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.w3schlklklksjkdools.com', path='/html/html_attributes.asp', params='', query='', fragment='')
+2025-05-08 23:20:53,304 - app.logger_config - INFO - Extracted base URL: https://www.w3schlklklksjkdools.com
+2025-05-08 23:20:53,306 - app.logger_config - INFO - Checking reachability of base URL: https://www.w3schlklklksjkdools.com
+2025-05-08 23:20:53,307 - app.logger_config - INFO - Starting check_base_url_reachability
+2025-05-08 23:20:53,308 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.w3schlklklksjkdools.com', path='', params='', query='', fragment='')
+2025-05-08 23:20:53,482 - app.logger_config - WARNING - Base URL unreachable: Failed to reach base URL: HTTPSConnectionPool(host='www.w3schlklklksjkdools.com', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001BF530DB980>: Failed to resolve 'www.w3schlklklksjkdools.com' ([Errno 11001] getaddrinfo failed)"))
+2025-05-08 23:24:46,597 - app.logger_config - INFO - Received request to start SEO analysis for URL: https://wiki.python.org/moin/BeginnersGuide
+2025-05-08 23:24:46,600 - app.logger_config - INFO - Validating URL: https://wiki.python.org/moin/BeginnersGuide
+2025-05-08 23:24:46,601 - app.logger_config - INFO - Starting validate_and_get_base_url function
+2025-05-08 23:24:46,613 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='wiki.python.org', path='/moin/BeginnersGuide', params='', query='', fragment='')
+2025-05-08 23:24:46,618 - app.logger_config - INFO - Extracted base URL: https://wiki.python.org
+2025-05-08 23:24:46,619 - app.logger_config - INFO - Checking reachability of base URL: https://wiki.python.org
+2025-05-08 23:24:46,621 - app.logger_config - INFO - Starting check_base_url_reachability
+2025-05-08 23:24:46,628 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='wiki.python.org', path='', params='', query='', fragment='')
+2025-05-08 23:24:51,317 - app.logger_config - INFO - Scan object inserted with ID: {'_id': 'fd786c82-cd4d-4346-8815-be69080b5fba', 'url': 'https://wiki.python.org', 'status': 'pending', 'result': None}
+2025-05-08 23:25:07,175 - app.logger_config - INFO - Fetching SEO analysis for scan ID: fd786c82-cd4d-4346-8815-be69080b5fba
+2025-05-08 23:25:07,177 - app.logger_config - INFO - Fetching SEO analysis data for scan ID: fd786c82-cd4d-4346-8815-be69080b5fba
+2025-05-09 00:19:34,047 - app.logger_config - INFO - Starting App.....
+2025-05-09 00:20:22,618 - app.logger_config - INFO - Received request to start SEO analysis for URL: kdjflksjdlskjdf
+2025-05-09 00:20:22,619 - app.logger_config - INFO - Validating URL: kdjflksjdlskjdf
+2025-05-09 00:20:22,619 - app.logger_config - INFO - Starting validate_and_get_base_url function
+2025-05-09 00:20:22,620 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='kdjflksjdlskjdf', path='', params='', query='', fragment='')
+2025-05-09 00:20:22,621 - app.logger_config - ERROR - Invalid domain format: kdjflksjdlskjdf
+2025-05-09 00:20:22,622 - app.logger_config - WARNING - Invalid URL format: kdjflksjdlskjdf
+2025-05-09 00:20:22,622 - app.logger_config - WARNING - Invalid URL format for URL: kdjflksjdlskjdf. Error: Invalid URL format
+2025-05-09 00:21:00,579 - app.logger_config - INFO - Received request to start SEO analysis for URL: https://www.sharesansar.com/newsdetail/nepse-index-couldnt-sustain-yesterdays-gain-plummets-045-today-while-volume-stood-at-rs-1165-arba-2025-05-08
+2025-05-09 00:21:00,591 - app.logger_config - INFO - Validating URL: https://www.sharesansar.com/newsdetail/nepse-index-couldnt-sustain-yesterdays-gain-plummets-045-today-while-volume-stood-at-rs-1165-arba-2025-05-08
+2025-05-09 00:21:00,592 - app.logger_config - INFO - Starting validate_and_get_base_url function
+2025-05-09 00:21:00,593 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.sharesansar.com', path='/newsdetail/nepse-index-couldnt-sustain-yesterdays-gain-plummets-045-today-while-volume-stood-at-rs-1165-arba-2025-05-08', params='', query='', fragment='')
+2025-05-09 00:21:00,609 - app.logger_config - INFO - Extracted base URL: https://www.sharesansar.com
+2025-05-09 00:21:00,611 - app.logger_config - INFO - Checking reachability of base URL: https://www.sharesansar.com
+2025-05-09 00:21:00,611 - app.logger_config - INFO - Starting check_base_url_reachability
+2025-05-09 00:21:00,612 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.sharesansar.com', path='', params='', query='', fragment='')
+2025-05-09 00:21:02,647 - app.logger_config - INFO - Scan object inserted with ID: {'_id': '42aeb932-a415-4f5c-8311-2a1efd8be7d0', 'url': 'https://www.sharesansar.com', 'status': 'pending', 'result': None}
+2025-05-09 00:21:17,268 - app.logger_config - INFO - Fetching SEO analysis for scan ID: 42aeb932-a415-4f5c-8311-2a1efd8be7d0
+2025-05-09 00:21:17,281 - app.logger_config - INFO - Fetching SEO analysis data for scan ID: 42aeb932-a415-4f5c-8311-2a1efd8be7d0
+2025-05-09 00:21:42,777 - app.logger_config - INFO - Fetching SEO analysis for scan ID: 42aeb932-a415-4f5c-8311-2a1efd8be7d0
+2025-05-09 00:21:42,777 - app.logger_config - INFO - Fetching SEO analysis data for scan ID: 42aeb932-a415-4f5c-8311-2a1efd8be7d0
+2025-05-09 00:22:11,525 - app.logger_config - INFO - Received request to start SEO analysis for URL: https://www.shareshjskajshansar.com/newsdetail/nepse-index-couldnt-sustain-yesterdays-gain-plummets-045-today-while-volume-stood-at-rs-1165-arba-2025-05-08
+2025-05-09 00:22:11,526 - app.logger_config - INFO - Validating URL: https://www.shareshjskajshansar.com/newsdetail/nepse-index-couldnt-sustain-yesterdays-gain-plummets-045-today-while-volume-stood-at-rs-1165-arba-2025-05-08
+2025-05-09 00:22:11,527 - app.logger_config - INFO - Starting validate_and_get_base_url function
+2025-05-09 00:22:11,527 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.shareshjskajshansar.com', path='/newsdetail/nepse-index-couldnt-sustain-yesterdays-gain-plummets-045-today-while-volume-stood-at-rs-1165-arba-2025-05-08', params='', query='', fragment='')
+2025-05-09 00:22:11,528 - app.logger_config - INFO - Extracted base URL: https://www.shareshjskajshansar.com
+2025-05-09 00:22:11,528 - app.logger_config - INFO - Checking reachability of base URL: https://www.shareshjskajshansar.com
+2025-05-09 00:22:11,529 - app.logger_config - INFO - Starting check_base_url_reachability
+2025-05-09 00:22:11,529 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.shareshjskajshansar.com', path='', params='', query='', fragment='')
+2025-05-09 00:22:11,721 - app.logger_config - WARNING - Base URL unreachable: Failed to reach base URL: HTTPSConnectionPool(host='www.shareshjskajshansar.com', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001D7978EB830>: Failed to resolve 'www.shareshjskajshansar.com' ([Errno 11001] getaddrinfo failed)"))
+2025-05-09 00:29:21,481 - app.logger_config - INFO - Received request to start SEO analysis for URL: https://www.w3schools.com/html/html_attributes.asp
+2025-05-09 00:29:21,482 - app.logger_config - INFO - Validating URL: https://www.w3schools.com/html/html_attributes.asp
+2025-05-09 00:29:21,483 - app.logger_config - INFO - Starting validate_and_get_base_url function
+2025-05-09 00:29:21,483 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.w3schools.com', path='/html/html_attributes.asp', params='', query='', fragment='')
+2025-05-09 00:29:21,484 - app.logger_config - INFO - Extracted base URL: https://www.w3schools.com
+2025-05-09 00:29:21,487 - app.logger_config - INFO - Checking reachability of base URL: https://www.w3schools.com
+2025-05-09 00:29:21,487 - app.logger_config - INFO - Starting check_base_url_reachability
+2025-05-09 00:29:21,490 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.w3schools.com', path='', params='', query='', fragment='')
+2025-05-09 00:29:22,415 - app.logger_config - INFO - Scan object inserted with ID: {'_id': '0a39d820-3bda-4bce-bea0-d94fb626ac7b', 'url': 'https://www.w3schools.com', 'status': 'pending', 'result': None}
+2025-05-09 00:29:37,373 - app.logger_config - INFO - Fetching SEO analysis for scan ID: 0a39d820-3bda-4bce-bea0-d94fb626ac7b
+2025-05-09 00:29:37,374 - app.logger_config - INFO - Fetching SEO analysis data for scan ID: 0a39d820-3bda-4bce-bea0-d94fb626ac7b
+2025-05-09 00:32:36,093 - app.logger_config - INFO - Starting App.....
+2025-05-09 00:34:26,695 - app.logger_config - INFO - Received request to start SEO analysis for URL: https://www.google.com/
+2025-05-09 00:34:26,696 - app.logger_config - INFO - Validating URL: https://www.google.com/
+2025-05-09 00:34:26,697 - app.logger_config - INFO - Starting validate_and_get_base_url function
+2025-05-09 00:34:26,697 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.google.com', path='/', params='', query='', fragment='')
+2025-05-09 00:34:26,700 - app.logger_config - INFO - Extracted base URL: https://www.google.com
+2025-05-09 00:34:26,701 - app.logger_config - INFO - Checking reachability of base URL: https://www.google.com
+2025-05-09 00:34:26,701 - app.logger_config - INFO - Starting check_base_url_reachability
+2025-05-09 00:34:26,708 - app.logger_config - INFO - Parsed URL: ParseResult(scheme='https', netloc='www.google.com', path='', params='', query='', fragment='')
+2025-05-09 00:34:27,648 - app.logger_config - INFO - Scan object inserted with ID: {'_id': '52862915-ff3d-4c1e-a26d-902ad8dce31f', 'url': 'https://www.google.com', 'status': 'pending', 'result': None}
+2025-05-09 00:34:44,189 - app.logger_config - INFO - Fetching SEO analysis for scan ID: 52862915-ff3d-4c1e-a26d-902ad8dce31f
+2025-05-09 00:34:44,211 - app.logger_config - INFO - Fetching SEO analysis data for scan ID: 52862915-ff3d-4c1e-a26d-902ad8dce31f
