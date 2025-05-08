@@ -13,14 +13,14 @@ celery_app.conf.worker_pool = "solo"  # Set worker pool to solo for easier debug
 @celery_app.task              #perform_seo_analysis as background task as a celery task
 def perform_seo_analysis(scan_id: str, url: str):
     try:
-        logger.info(f"Received SEO analysis request for URL: {url} with scan_id {scan_id}")
+        logger.info(f"Received SEO analysis request for URL: {url} with scan_id {scan_id}") #task has started. this helps track and processing debug issues
 
         # Fetch the scan object from MongoDB
         scan = seo_analysis_collection.find_one({"_id": scan_id})
         if not scan:
             logger.error(f"Scan with ID {scan_id} not found.")
             return
-
+    
         # Update status to "in_progress"
         seo_analysis_collection.update_one({"_id": scan_id}, {"$set": {"status": "in_progress"}})      #Updates the status to "in_progress" in the database.
         logger.info(f"Updated status to 'in_progress' for scan ID {scan_id}")
